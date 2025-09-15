@@ -1,5 +1,9 @@
 require("dotenv").config()
 const { chromium } = require("playwright")
+const fs = require("fs")
+const path = require("path")
+
+const LAST_MESSAGE_FILE = path.resolve("artifacts", `last-message.json`)
 
 const { TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, CITY, STREET, HOUSE } =
   process.env
@@ -73,36 +77,56 @@ function checkOutage(info) {
   return isOutageDetected
 }
 
+function loadLastMessage() {
+  if (fs.existsSync(LAST_MESSAGE_FILE)) {
+    return JSON.parse(fs.readFileSync(LAST_MESSAGE_FILE, "utf8").trim())
+  }
+  return null
+}
+
+function saveLastMessage(message) {
+  fs.mkdirSync(path.dirname(LAST_MESSAGE_FILE), { recursive: true })
+  fs.writeFileSync(LAST_MESSAGE_FILE, JSON.stringify(message))
+}
+
+function deleteLastMessage() {
+  fs.rmdirSync(path.dirname(LAST_MESSAGE_FILE), { recursive: true })
+}
+
 async function sendNotification(info) {
   if (!TELEGRAM_BOT_TOKEN)
     throw Error("❌ Missing telegram bot token or chat id.")
   if (!TELEGRAM_CHAT_ID) throw Error("❌ Missing telegram chat id.")
 
-  const {
-    type,
-    sub_type,
-    start_date,
-    end_date,
-    sub_type_reason,
-    updateTimestamp,
-  } = info?.data?.[HOUSE] || {}
+  const { sub_type, start_date, end_date } = info?.data?.[HOUSE] || {}
+  // const { updateTimestamp } = info || {}
+  const updateTimestamp = new Date().toLocaleString("uk-UA")
 
-  const text =
-    `⚡ <b>УВАГА! Інформація про відключення електроенергії</b>\n\n` +
-    `🏠 <b>Тип:</b> ${type || "Не вказано"}\n` +
-    `📋 <b>Підтип:</b> ${sub_type || "Не вказано"}\n` +
-    `🕐 <b>Початок:</b> ${start_date || "Не вказано"}\n` +
-    `🕐 <b>Кінець:</b> ${end_date || "Не вказано"}\n` +
-    `ℹ️ <b>Причина:</b> ${
-      sub_type_reason ? sub_type_reason.join(", ") : "Не вказано"
-    }\n` +
-    `⏰ <b>Оновлено:</b> ${updateTimestamp}`
+  const text = [
+    "🪫 <b>За вашою адресою в даний момент відсутня електроенергія!</b>",
+    "",
+    "ℹ️ <b>Причина:</b>",
+    (sub_type || "Невідома") + ".",
+    "",
+    "🔴 <b>Час початку:</b>",
+    start_date || "Невідомий",
+    "",
+    "🟢 <b>Час відновлення:</b>",
+    end_date || "Невідомий",
+    "",
+    "⏰ <b>Дата оновлення інформації:</b>",
+    updateTimestamp,
+  ].join("\n")
 
   console.log("🌀 Sending notification...")
 
+  const lastMessage = loadLastMessage() || {}
+
   try {
     const res = await fetch(
-      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/${
+        lastMessage.message_id ? "editMessageText" : "sendMessage"
+      }`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -110,14 +134,20 @@ async function sendNotification(info) {
           chat_id: TELEGRAM_CHAT_ID,
           text,
           parse_mode: "HTML",
+          message_id: lastMessage.message_id ?? undefined,
         }),
       }
     )
 
     const data = await res.json()
     console.log("🟢 Notification sent.", data)
+
+    saveLastMessage(data.result)
   } catch (error) {
     console.log("🔴 Notification not sent.", error.message)
+    deleteLastMessage()
+    console.log("🌀 Try again...")
+    sendNotification(info)
   }
 }
 

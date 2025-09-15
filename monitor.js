@@ -90,9 +90,6 @@ function loadLastMessage() {
       .slice(0, 10)
     const today = new Date().toISOString().slice(0, 10)
 
-    console.log(messageDay)
-    console.log(today)
-
     if (messageDay < today) {
       deleteLastMessage()
       return null
@@ -119,7 +116,7 @@ async function sendNotification(info) {
   const { sub_type, start_date, end_date } = info?.data?.[HOUSE] || {}
   const { updateTimestamp } = info || {}
   const updateNotificationTimestamp = new Date().toLocaleString("uk-UA", {
-    timeZone: "Europe/Kiev",
+    timeZone: "Europe/Kyiv",
   })
 
   const text = [
@@ -143,7 +140,6 @@ async function sendNotification(info) {
   console.log("🌀 Sending notification...")
 
   const lastMessage = loadLastMessage() || {}
-  console.log(lastMessage)
 
   try {
     const res = await fetch(

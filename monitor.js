@@ -78,10 +78,28 @@ function checkOutage(info) {
 }
 
 function loadLastMessage() {
-  if (fs.existsSync(LAST_MESSAGE_FILE)) {
-    return JSON.parse(fs.readFileSync(LAST_MESSAGE_FILE, "utf8").trim())
+  if (!fs.existsSync(LAST_MESSAGE_FILE)) return null
+
+  const lastMessage = JSON.parse(
+    fs.readFileSync(LAST_MESSAGE_FILE, "utf8").trim()
+  )
+
+  if (lastMessage?.date) {
+    const messageDay = new Date(lastMessage.date * 1000)
+      .toISOString()
+      .slice(0, 10)
+    const today = new Date().toISOString().slice(0, 10)
+
+    console.log(messageDay)
+    console.log(today)
+
+    if (messageDay < today) {
+      deleteLastMessage()
+      return null
+    }
   }
-  return null
+
+  return lastMessage
 }
 
 function saveLastMessage(message) {
@@ -99,11 +117,13 @@ async function sendNotification(info) {
   if (!TELEGRAM_CHAT_ID) throw Error("❌ Missing telegram chat id.")
 
   const { sub_type, start_date, end_date } = info?.data?.[HOUSE] || {}
-  // const { updateTimestamp } = info || {}
-  const updateTimestamp = new Date().toLocaleString("uk-UA")
+  const { updateTimestamp } = info || {}
+  const updateNotificationTimestamp = new Date().toLocaleString("uk-UA", {
+    timeZone: "Europe/Kiev",
+  })
 
   const text = [
-    "🪫 <b>За вашою адресою в даний момент відсутня електроенергія!</b>",
+    "🪫 <b>Електроенергія відсутня!</b>",
     "",
     "ℹ️ <b>Причина:</b>",
     (sub_type || "Невідома") + ".",
@@ -116,11 +136,14 @@ async function sendNotification(info) {
     "",
     "⏰ <b>Дата оновлення інформації:</b>",
     updateTimestamp,
+    "⏰ <b>Дата оновлення повідомлення:</b>",
+    updateNotificationTimestamp,
   ].join("\n")
 
   console.log("🌀 Sending notification...")
 
   const lastMessage = loadLastMessage() || {}
+  console.log(lastMessage)
 
   try {
     const res = await fetch(

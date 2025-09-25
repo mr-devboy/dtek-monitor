@@ -115,9 +115,17 @@ async function sendNotification(info) {
 
   const { sub_type, start_date, end_date } = info?.data?.[HOUSE] || {}
   const { updateTimestamp } = info || {}
-  const updateNotificationTimestamp = new Date().toLocaleString("uk-UA", {
+
+  const now = new Date()
+  const time = now.toLocaleTimeString("uk-UA", {
+    timeZone: "Europe/Kyiv",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+  const date = now.toLocaleDateString("uk-UA", {
     timeZone: "Europe/Kyiv",
   })
+  const updateNotificationTimestamp = `${time} ${date}`
 
   const text = [
     "🪫 <b>Електроенергія відсутня!</b>",
@@ -131,9 +139,9 @@ async function sendNotification(info) {
     "🟢 <b>Час відновлення:</b>",
     end_date || "Невідомий",
     "",
-    "⏰ <b>Дата оновлення інформації:</b>",
+    "⏰ <b>Час оновлення інформації:</b>",
     updateTimestamp,
-    "⏰ <b>Дата оновлення повідомлення:</b>",
+    "⏰ <b>Час оновлення повідомлення:</b>",
     updateNotificationTimestamp,
   ].join("\n")
 

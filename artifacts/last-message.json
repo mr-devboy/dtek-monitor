@@ -1,1 +1,50 @@
-{"message_id":100,"sender_chat":{"id":-1003093286334,"title":"Test Channel","type":"channel"},"chat":{"id":-1003093286334,"title":"Test Channel","type":"channel"},"date":1757938587,"edit_date":1757938600,"text":"🪫 За вашою адресою в даний момент відсутня електроенергія!\n\nℹ️ Причина:\nПлановий ремонт електричних мереж.\n\n🔴 Час початку:\n11:04 15.09.2025\n\n🟢 Час відновлення:\n20:00 15.09.2025\n\n⏰ Дата оновлення інформації:\n15.09.2025, 15:16:39","entities":[{"offset":3,"length":56,"type":"bold"},{"offset":64,"length":8,"type":"bold"},{"offset":112,"length":12,"type":"bold"},{"offset":146,"length":16,"type":"bold"},{"offset":183,"length":26,"type":"bold"}],"has_protected_content":true}
+{
+    "message_id": 32,
+    "sender_chat": {
+        "id": -1002980774628,
+        "title": "СвітлоБот ⚡ Garden Village",
+        "username": "svitlobot_gv",
+        "type": "channel"
+    },
+    "chat": {
+        "id": -1002980774628,
+        "title": "СвітлоБот ⚡ Garden Village",
+        "username": "svitlobot_gv",
+        "type": "channel"
+    },
+    "date": 1758783710,
+    "edit_date": 1758798026,
+    "text": "🪫 Електроенергія відсутня!\n\nℹ️ Причина:\nПлановий ремонт електричних мереж.\n\n🔴 Час початку:\n09:48 25.09.2025\n\n🟢 Час відновлення:\n20:00 25.09.2025\n\n⏰ Час оновлення інформації:\n13:50 25.09.2025\n⏰ Час оновлення повідомлення:\n25.09.2025, 14:00:26",
+    "entities": [
+        {
+            "offset": 3,
+            "length": 24,
+            "type": "bold"
+        },
+        {
+            "offset": 32,
+            "length": 8,
+            "type": "bold"
+        },
+        {
+            "offset": 80,
+            "length": 12,
+            "type": "bold"
+        },
+        {
+            "offset": 114,
+            "length": 16,
+            "type": "bold"
+        },
+        {
+            "offset": 151,
+            "length": 25,
+            "type": "bold"
+        },
+        {
+            "offset": 196,
+            "length": 27,
+            "type": "bold"
+        }
+    ]
+}

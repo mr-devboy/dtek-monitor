@@ -13,6 +13,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           token: ${{ secrets.PAT }}
 
       - name: Set up Node.js
@@ -39,7 +40,6 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-          git checkout main
           git add artifacts/
 
           if ! git diff --cached --quiet; then

@@ -1,23 +1,31 @@
-require("dotenv").config()
-const { chromium } = require("playwright")
-const fs = require("fs")
-const path = require("path")
+import { chromium } from "playwright"
 
-const LAST_MESSAGE_FILE = path.resolve("artifacts", `last-message.json`)
+import {
+  TELEGRAM_BOT_TOKEN,
+  TELEGRAM_CHAT_ID,
+  CITY,
+  STREET,
+  HOUSE,
+  SHUTDOWNS_PAGE,
+} from "./constants.js"
 
-const { TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, CITY, STREET, HOUSE } =
-  process.env
+import {
+  capitalize,
+  deleteLastMessage,
+  getCurrentTime,
+  loadLastMessage,
+  saveLastMessage,
+} from "./helpers.js"
 
 async function getInfo() {
   console.log("🌀 Getting info...")
 
   const browser = await chromium.launch({ headless: true })
-  const browserContext = await browser.newContext()
-  const browserPage = await browserContext.newPage()
+  const browserPage = await browser.newPage()
 
   try {
-    await browserPage.goto("https://www.dtek-krem.com.ua/ua/shutdowns", {
-      waitUntil: "networkidle",
+    await browserPage.goto(SHUTDOWNS_PAGE, {
+      waitUntil: "load",
     })
 
     const csrfTokenTag = await browserPage.waitForSelector(
@@ -59,7 +67,7 @@ async function getInfo() {
   }
 }
 
-function checkOutage(info) {
+function checkIsOutage(info) {
   console.log("🌀 Checking power outage...")
 
   if (!info?.data) {
@@ -77,86 +85,54 @@ function checkOutage(info) {
   return isOutageDetected
 }
 
-function loadLastMessage() {
-  if (!fs.existsSync(LAST_MESSAGE_FILE)) return null
+function checkIsScheduled(info) {
+  console.log("🌀 Checking whether power outage scheduled...")
 
-  const lastMessage = JSON.parse(
-    fs.readFileSync(LAST_MESSAGE_FILE, "utf8").trim()
-  )
-
-  if (lastMessage?.date) {
-    const messageDay = new Date(lastMessage.date * 1000)
-      .toISOString()
-      .slice(0, 10)
-    const today = new Date().toISOString().slice(0, 10)
-
-    if (messageDay < today) {
-      deleteLastMessage()
-      return null
-    }
+  if (!info?.data) {
+    throw Error("❌ Power outage info missed.")
   }
 
-  return lastMessage
+  const { sub_type } = info?.data?.[HOUSE] || {}
+  const isScheduled = sub_type.toLowerCase().includes("графік")
+
+  isScheduled
+    ? console.log("🗓️ Power outage scheduled!")
+    : console.log("⚠️ Power outage not scheduled!")
+
+  return isScheduled
 }
 
-function saveLastMessage({ date, message_id } = {}) {
-  fs.mkdirSync(path.dirname(LAST_MESSAGE_FILE), { recursive: true })
-  fs.writeFileSync(
-    LAST_MESSAGE_FILE,
-    JSON.stringify({
-      message_id,
-      date,
-    })
-  )
-}
-
-function deleteLastMessage() {
-  fs.rmdirSync(path.dirname(LAST_MESSAGE_FILE), { recursive: true })
-}
-
-async function sendNotification(info) {
-  if (!TELEGRAM_BOT_TOKEN)
-    throw Error("❌ Missing telegram bot token or chat id.")
-  if (!TELEGRAM_CHAT_ID) throw Error("❌ Missing telegram chat id.")
+function generateMessage(info) {
+  console.log("🌀 Generating message...")
 
   const { sub_type, start_date, end_date } = info?.data?.[HOUSE] || {}
   const { updateTimestamp } = info || {}
 
-  const now = new Date()
-  const time = now.toLocaleTimeString("uk-UA", {
-    timeZone: "Europe/Kyiv",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
-  const date = now.toLocaleDateString("uk-UA", {
-    timeZone: "Europe/Kyiv",
-  })
-  const updateNotificationTimestamp = `${time} ${date}`
+  const reason = capitalize(sub_type)
+  const begin = start_date.split(" ")[0]
+  const end = end_date.split(" ")[0]
 
-  const text = [
-    "🪫 <b>Електроенергія відсутня!</b>",
+  return [
+    "⚡️ <b>Зафіксовано відключення:</b>",
+    `🪫 <code>${begin} — ${end}</code>`,
     "",
-    "ℹ️ <b>Причина:</b>",
-    (sub_type || "Невідома") + ".",
-    "",
-    "🔴 <b>Час початку:</b>",
-    start_date || "Невідомий",
-    "",
-    "🟢 <b>Час відновлення:</b>",
-    end_date || "Невідомий",
-    "",
-    "⏰ <b>Час оновлення інформації:</b>",
-    updateTimestamp,
-    "⏰ <b>Час оновлення повідомлення:</b>",
-    updateNotificationTimestamp,
+    `⚠️ <i>${reason}.</i>`,
+    "\n",
+    `🔄 <i>${updateTimestamp}</i>`,
+    `💬 <i>${getCurrentTime()}</i>`,
   ].join("\n")
+}
+
+async function sendNotification(message) {
+  if (!TELEGRAM_BOT_TOKEN)
+    throw Error("❌ Missing telegram bot token or chat id.")
+  if (!TELEGRAM_CHAT_ID) throw Error("❌ Missing telegram chat id.")
 
   console.log("🌀 Sending notification...")
 
   const lastMessage = loadLastMessage() || {}
-
   try {
-    const res = await fetch(
+    const response = await fetch(
       `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/${
         lastMessage.message_id ? "editMessageText" : "sendMessage"
       }`,
@@ -165,29 +141,31 @@ async function sendNotification(info) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           chat_id: TELEGRAM_CHAT_ID,
-          text,
+          text: message,
           parse_mode: "HTML",
           message_id: lastMessage.message_id ?? undefined,
         }),
       }
     )
 
-    const data = await res.json()
-    console.log("🟢 Notification sent.", data)
-
+    const data = await response.json()
     saveLastMessage(data.result)
+
+    console.log("🟢 Notification sent.")
   } catch (error) {
     console.log("🔴 Notification not sent.", error.message)
     deleteLastMessage()
-    console.log("🌀 Try again...")
-    sendNotification(info)
   }
 }
 
 async function run() {
   const info = await getInfo()
-  const isOutage = checkOutage(info)
-  if (isOutage) await sendNotification(info)
+  const isOutage = checkIsOutage(info)
+  const isScheduled = checkIsScheduled(info)
+  if (isOutage && !isScheduled) {
+    const message = generateMessage(info)
+    await sendNotification(message)
+  }
 }
 
 run().catch((error) => console.error(error.message))

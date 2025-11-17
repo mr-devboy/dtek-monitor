@@ -33,7 +33,7 @@ jobs:
           CITY: ${{ secrets.CITY }}
           STREET: ${{ secrets.STREET }}
           HOUSE: ${{ secrets.HOUSE }}
-        run: node monitor.js
+        run: node ./src/monitor.js
 
       - name: Commit updated artifacts
         run: |

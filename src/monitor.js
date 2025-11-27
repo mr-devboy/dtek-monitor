@@ -3,7 +3,7 @@ import fs from "node:fs"
 import path from "node:path"
 import { CITY, STREET, HOUSE, SHUTDOWNS_PAGE } from "./constants.js"
 
-// Допоміжна функція для отримання поточної дати у форматі YYYY-MM-DD (Київ)
+// Допоміжна функція (залишаємо як фолбек)
 function getKyivDate(offsetDays = 0) {
   const date = new Date();
   date.setDate(date.getDate() + offsetDays);
@@ -136,7 +136,25 @@ async function run() {
   // Трансформуємо графік
   const cleanSchedule = transformToSvitloFormat(rawInfo);
 
-  // Створюємо об'єкт регіону (Тільки Київська область, як ви просили)
+  // --- ВИПРАВЛЕННЯ ДАТ ---
+  // Ми витягуємо дати прямо з отриманих даних, а не генеруємо їх
+  const availableDates = new Set();
+  
+  // Проходимось по всіх групах, щоб знайти всі можливі дати
+  Object.values(cleanSchedule).forEach(groupData => {
+    Object.keys(groupData).forEach(date => availableDates.add(date));
+  });
+
+  // Сортуємо дати (2025-11-27, 2025-11-28...)
+  const sortedDates = Array.from(availableDates).sort();
+
+  // Беремо першу дату як "сьогодні", другу як "завтра" (якщо є)
+  // Якщо даних немає, використовуємо фолбек getKyivDate
+  const realDateToday = sortedDates[0] || getKyivDate(0);
+  const realDateTomorrow = sortedDates[1] || getKyivDate(1);
+  // -----------------------
+
+  // Створюємо об'єкт регіону
   const kyivRegion = {
     "cpu": "kiivska-oblast",
     "name_ua": "Київська",
@@ -145,14 +163,14 @@ async function run() {
     "schedule": cleanSchedule
   };
 
-  // Формуємо внутрішній об'єкт body (який буде стрічкою)
+  // Формуємо внутрішній об'єкт body
   const bodyContent = {
-    "date_today": getKyivDate(0),
-    "date_tomorrow": getKyivDate(1),
-    "regions": [ kyivRegion ] // Тільки один регіон у масиві
+    "date_today": realDateToday,      // <--- ТЕПЕР ТУТ РЕАЛЬНА ДАТА З ГРАФІКУ
+    "date_tomorrow": realDateTomorrow, // <--- ТЕПЕР ТУТ РЕАЛЬНА ДАТА З ГРАФІКУ
+    "regions": [ kyivRegion ]
   };
 
-  // ФІНАЛЬНА СТРУКТУРА: body як stringified JSON + timestamp
+  // ФІНАЛЬНА СТРУКТУРА
   const finalOutput = {
     "body": JSON.stringify(bodyContent),
     "timestamp": Date.now()
@@ -160,9 +178,9 @@ async function run() {
 
   // Зберігаємо
   const outputPath = path.resolve("dtek.json")
-  fs.writeFileSync(outputPath, JSON.stringify(finalOutput, null, 2)) // null, 2 для читабельності зовнішнього файлу, але body всередині буде стиснутим
+  fs.writeFileSync(outputPath, JSON.stringify(finalOutput, null, 2))
   
-  console.log("✅ Data converted to Svitlo.live format and saved.");
+  console.log(`✅ Data converted. Dates found: ${realDateToday}, ${realDateTomorrow}`);
 }
 
 run()

@@ -1,133 +1,168 @@
 import { chromium } from "playwright"
 import fs from "node:fs"
 import path from "node:path"
-import { SHUTDOWNS_PAGE } from "./constants.js" // CITY/STREET/HOUSE більше не потрібні для цього методу
+import { CITY, STREET, HOUSE, SHUTDOWNS_PAGE } from "./constants.js"
 
-// Функція для форматування дати з Unix timestamp (секунди) у YYYY-MM-DD
-function formatDateFromTimestamp(timestamp) {
-  // Множимо на 1000, бо JS працює з мілісекундами
-  const d = new Date(timestamp * 1000)
-  // Використовуємо локаль uk-UA з часовим поясом Києва, щоб уникнути зміщення
-  return d.toLocaleDateString("en-CA", { timeZone: "Europe/Kyiv" }) // повертає YYYY-MM-DD
+// Допоміжна функція для отримання поточної дати у форматі YYYY-MM-DD (Київ)
+function getKyivDate(offsetDays = 0) {
+  const date = new Date();
+  date.setDate(date.getDate() + offsetDays);
+  return date.toLocaleDateString("en-CA", { timeZone: "Europe/Kyiv" });
 }
 
-async function getFullSchedule() {
-  console.log("⏳ Launching browser...")
+// 1. ФУНКЦІЯ ОТРИМАННЯ ДАНИХ (ПАРСИНГ)
+async function getInfo() {
   const browser = await chromium.launch({ headless: true })
-  
   try {
-    const page = await browser.newPage()
-    console.log("🌍 Opening DTEK page...")
-    await page.goto(SHUTDOWNS_PAGE, { waitUntil: "networkidle" }) // чекаємо завершення запитів
+    const browserPage = await browser.newPage()
+    await browserPage.goto(SHUTDOWNS_PAGE, { waitUntil: "load" })
 
-    // Витягуємо глобальну змінну DisconSchedule, яка містить всі графіки
-    const rawSchedule = await page.evaluate(() => {
-      // Перевіряємо різні варіанти, де ДТЕК може ховати дані
-      if (window.DisconSchedule && window.DisconSchedule.fact) {
-        return window.DisconSchedule.fact
-      }
-      return null
-    })
+    const csrfTokenTag = await browserPage.waitForSelector('meta[name="csrf-token"]', { state: "attached" })
+    const csrfToken = await csrfTokenTag.getAttribute("content")
 
-    if (!rawSchedule || !rawSchedule.data) {
-      throw new Error("❌ DisconSchedule not found on page")
-    }
+    const info = await browserPage.evaluate(
+      async ({ CITY, STREET, csrfToken }) => {
+        const formData = new URLSearchParams()
+        formData.append("method", "getHomeNum")
+        formData.append("data[0][name]", "city")
+        formData.append("data[0][value]", CITY)
+        formData.append("data[1][name]", "street")
+        formData.append("data[1][value]", STREET)
+        formData.append("data[2][name]", "updateFact")
+        formData.append("data[2][value]", new Date().toLocaleString("uk-UA"))
 
-    console.log("✅ Raw schedule found")
-    return rawSchedule.data
-
+        const response = await fetch("/ua/ajax", {
+          method: "POST",
+          headers: { "x-requested-with": "XMLHttpRequest", "x-csrf-token": csrfToken },
+          body: formData,
+        })
+        return await response.json()
+      },
+      { CITY, STREET, csrfToken }
+    )
+    return info
   } catch (error) {
-    console.error("❌ Error getting schedule:", error.message)
+    console.error("Scraping error:", error)
     return null
   } finally {
     await browser.close()
   }
 }
 
-function transformData(rawData) {
-  const finalSchedule = {} // Тут буде структура {"1.1": {...}, "1.2": {...}}
-  const availableDates = []
+// 2. ФУНКЦІЯ ТРАНСФОРМАЦІЇ ПІД ФОРМАТ SVITLO.LIVE
+function transformToSvitloFormat(dtekRaw) {
+  // Перевірка структури даних
+  let daysData = null;
+  if (dtekRaw?.data?.fact?.data) daysData = dtekRaw.data.fact.data;
+  else if (dtekRaw?.fact?.data) daysData = dtekRaw.fact.data;
+  else if (dtekRaw?.data) daysData = dtekRaw.data;
 
-  // Сортуємо таймстемпи (дати), щоб йшли по порядку
-  const timestamps = Object.keys(rawData).sort()
+  if (!daysData) return {};
 
-  // 1. Проходимося по кожній даті (Unix timestamp)
-  for (const ts of timestamps) {
-    const dateStr = formatDateFromTimestamp(ts) // "2025-11-27"
-    availableDates.push(dateStr)
-    const groupsData = rawData[ts] // Об'єкт з групами GPV1.1 ...
+  const scheduleMap = {};
 
-    // 2. Проходимося по кожній групі (GPV1.1, GPV1.2...)
-    for (const [groupKey, hoursData] of Object.entries(groupsData)) {
-      // Перетворюємо "GPV1.1" -> "1.1"
-      const normalizedGroup = groupKey.replace("GPV", "")
-      
-      if (!finalSchedule[normalizedGroup]) {
-        finalSchedule[normalizedGroup] = {}
+  // Проходимо по днях (Timestamp ключів)
+  for (const [timestamp, queues] of Object.entries(daysData)) {
+    
+    // Конвертуємо Timestamp у дату YYYY-MM-DD
+    const dateObj = new Date(parseInt(timestamp) * 1000);
+    const dateStr = dateObj.toLocaleDateString("en-CA", { 
+      timeZone: "Europe/Kyiv" 
+    }); 
+
+    // Проходимо по групах (GPV1.1 -> 1.1)
+    for (const [gpvKey, hours] of Object.entries(queues)) {
+      const groupKey = gpvKey.replace("GPV", ""); // "1.1"
+
+      if (!scheduleMap[groupKey]) {
+        scheduleMap[groupKey] = {};
+      }
+      if (!scheduleMap[groupKey][dateStr]) {
+        scheduleMap[groupKey][dateStr] = {};
       }
 
-      // Створюємо об'єкт для конкретної дати
-      finalSchedule[normalizedGroup][dateStr] = {}
-
-      // 3. Заповнюємо години. ДТЕК дає 1..24. Нам треба "00:00".."23:30"
+      // Проходимо по годинах (1..24)
       for (let h = 1; h <= 24; h++) {
-        const hourVal = hoursData[h] // "yes", "no", "second", "first"
+        const status = hours[h.toString()];
         
-        // МАПІНГ СТАТУСІВ:
-        // "yes" (є світло) -> 1
-        // "no" (немає) -> 2 (у вашому JSON це було 2)
-        // "second" (сіра зона/немає) -> 2
-        // "first" (сіра зона/є) -> 2 (для перестраховки ставимо як відключення, або змініть на 1)
-        
-        let status = 1
-        if (hourVal === "yes") status = 1
-        else status = 2 // "no", "second", "first" вважаємо за 2 (відключення/можливе відключення)
+        // Форматуємо 00:00, 00:30
+        const hourIndex = h - 1;
+        const hourStr = hourIndex.toString().padStart(2, "0");
+        const slot00 = `${hourStr}:00`;
+        const slot30 = `${hourStr}:30`;
 
-        // Формуємо ключі часу
-        // h=1 це 00:00 - 01:00. Тобто слоти "00:00" і "00:30"
-        const hourIndex = h - 1 // 0..23
-        const hh = String(hourIndex).padStart(2, "0")
+        let val00, val30;
+
+        // ВАЖЛИВО: Формат Svitlo.live
+        // 1 = Є світло (ON)
+        // 2 = Немає світла (OFF)
         
-        finalSchedule[normalizedGroup][dateStr][`${hh}:00`] = status
-        finalSchedule[normalizedGroup][dateStr][`${hh}:30`] = status
+        switch (status) {
+          case "yes": // Світло є
+            val00 = 1; val30 = 1;
+            break;
+          case "no": // Світла немає
+            val00 = 2; val30 = 2;
+            break;
+          case "first": // Немає перші 30 хв (OFF, ON) -> (2, 1)
+            val00 = 2; val30 = 1;
+            break;
+          case "second": // Немає другі 30 хв (ON, OFF) -> (1, 2)
+            val00 = 1; val30 = 2;
+            break;
+          default: // Сіра зона або помилка - вважаємо що світло є (1)
+            val00 = 1; val30 = 1;
+        }
+
+        scheduleMap[groupKey][dateStr][slot00] = val00;
+        scheduleMap[groupKey][dateStr][slot30] = val30;
       }
     }
   }
-
-  // Формуємо фінальний "дивний" JSON
-  // Беремо першу і другу дату з знайдених
-  const dateToday = availableDates[0]
-  const dateTomorrow = availableDates[1] || availableDates[0] // Фоллбек якщо є тільки одна дата
-
-  const output = {
-    body: JSON.stringify({
-      date_today: dateToday,
-      date_tomorrow: dateTomorrow,
-      regions: [
-        {
-          cpu: "kiivska-oblast", // Або "kiev-city"
-          name_ua: "Київська",
-          name_ru: "Киевская",
-          name_en: "Kyiv",
-          schedule: finalSchedule
-        }
-      ]
-    }),
-    timestamp: Date.now()
-  }
-
-  return output
+  return scheduleMap;
 }
 
+// 3. ГОЛОВНИЙ ЗАПУСК
 async function run() {
-  const rawData = await getFullSchedule()
-  if (rawData) {
-    const formattedJson = transformData(rawData)
-    
-    const outputPath = path.resolve("dtek.json")
-    fs.writeFileSync(outputPath, JSON.stringify(formattedJson, null, 2))
-    console.log("💾 Data saved to dtek.json")
+  console.log("🔄 Starting DTEK update...");
+  
+  const rawInfo = await getInfo()
+  
+  if (!rawInfo) {
+    console.error("❌ Failed to fetch data");
+    process.exit(1);
   }
+
+  // Трансформуємо графік
+  const cleanSchedule = transformToSvitloFormat(rawInfo);
+
+  // Створюємо об'єкт регіону (Тільки Київська область, як ви просили)
+  const kyivRegion = {
+    "cpu": "kiivska-oblast",
+    "name_ua": "Київська",
+    "name_ru": "Киевская",
+    "name_en": "Kyiv",
+    "schedule": cleanSchedule
+  };
+
+  // Формуємо внутрішній об'єкт body (який буде стрічкою)
+  const bodyContent = {
+    "date_today": getKyivDate(0),
+    "date_tomorrow": getKyivDate(1),
+    "regions": [ kyivRegion ] // Тільки один регіон у масиві
+  };
+
+  // ФІНАЛЬНА СТРУКТУРА: body як stringified JSON + timestamp
+  const finalOutput = {
+    "body": JSON.stringify(bodyContent),
+    "timestamp": Date.now()
+  };
+
+  // Зберігаємо
+  const outputPath = path.resolve("dtek.json")
+  fs.writeFileSync(outputPath, JSON.stringify(finalOutput, null, 2)) // null, 2 для читабельності зовнішнього файлу, але body всередині буде стиснутим
+  
+  console.log("✅ Data converted to Svitlo.live format and saved.");
 }
 
 run()

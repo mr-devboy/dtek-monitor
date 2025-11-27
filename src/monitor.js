@@ -1,7 +1,9 @@
 import { chromium } from "playwright"
-import fs from "node:fs"
 import path from "node:path"
 import { CITY, STREET, HOUSE, SHUTDOWNS_PAGE } from "./constants.js"
+
+// Беремо змінні для Cloudflare з оточення
+const { CF_WORKER_URL, CF_WORKER_TOKEN } = process.env;
 
 // Допоміжна функція (залишаємо як фолбек)
 function getKyivDate(offsetDays = 0) {
@@ -176,11 +178,34 @@ async function run() {
     "timestamp": Date.now()
   };
 
-  // Зберігаємо
-  const outputPath = path.resolve("dtek.json")
-  fs.writeFileSync(outputPath, JSON.stringify(finalOutput, null, 2))
-  
-  console.log(`✅ Data converted. Dates found: ${realDateToday}, ${realDateTomorrow}`);
+  // --- ВІДПРАВКА НА CLOUDFLARE ---
+  // Перевіряємо чи є змінні
+  if (!CF_WORKER_URL || !CF_WORKER_TOKEN) {
+      console.error("❌ Missing CF_WORKER_URL or CF_WORKER_TOKEN secrets!");
+      process.exit(1);
+  }
+
+  console.log(`🚀 Sending data to Cloudflare...`);
+
+  try {
+      const response = await fetch(CF_WORKER_URL, {
+          method: "POST",
+          headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${CF_WORKER_TOKEN}`
+          },
+          body: JSON.stringify(finalOutput)
+      });
+
+      if (!response.ok) {
+          throw new Error(`Worker Error: ${response.status} ${await response.text()}`);
+      }
+
+      console.log(`✅ Data converted and sent to Cloudflare! Dates: ${realDateToday}, ${realDateTomorrow}`);
+  } catch (err) {
+      console.error("❌ Failed to send data to Cloudflare:", err.message);
+      process.exit(1);
+  }
 }
 
 run()

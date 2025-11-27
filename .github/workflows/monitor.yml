@@ -35,6 +35,9 @@ jobs:
           CITY: ${{ secrets.CITY }}
           STREET: ${{ secrets.STREET }}
           HOUSE: ${{ secrets.HOUSE }}
+          CF_WORKER_URL: ${{ secrets.CF_WORKER_URL }}
+          CF_WORKER_TOKEN: ${{ secrets.CF_WORKER_TOKEN }}
+        run: node ./src/monitor.js
         run: node ./src/monitor.js
 
       - name: Commit updated data

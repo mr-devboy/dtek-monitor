@@ -3,6 +3,14 @@ import fs from "node:fs"
 import path from "node:path"
 import { CITY, STREET, HOUSE, SHUTDOWNS_PAGE } from "./constants.js"
 
+// Допоміжна функція для отримання поточної дати у форматі YYYY-MM-DD (Київ)
+function getKyivDate(offsetDays = 0) {
+  const date = new Date();
+  date.setDate(date.getDate() + offsetDays);
+  return date.toLocaleDateString("en-CA", { timeZone: "Europe/Kyiv" });
+}
+
+// 1. ФУНКЦІЯ ОТРИМАННЯ ДАНИХ (ПАРСИНГ)
 async function getInfo() {
   const browser = await chromium.launch({ headless: true })
   try {
@@ -34,20 +42,127 @@ async function getInfo() {
     )
     return info
   } catch (error) {
-    console.error(error)
-    return { error: true, message: error.message }
+    console.error("Scraping error:", error)
+    return null
   } finally {
     await browser.close()
   }
 }
 
+// 2. ФУНКЦІЯ ТРАНСФОРМАЦІЇ ПІД ФОРМАТ SVITLO.LIVE
+function transformToSvitloFormat(dtekRaw) {
+  // Перевірка структури даних
+  let daysData = null;
+  if (dtekRaw?.data?.fact?.data) daysData = dtekRaw.data.fact.data;
+  else if (dtekRaw?.fact?.data) daysData = dtekRaw.fact.data;
+  else if (dtekRaw?.data) daysData = dtekRaw.data;
+
+  if (!daysData) return {};
+
+  const scheduleMap = {};
+
+  // Проходимо по днях (Timestamp ключів)
+  for (const [timestamp, queues] of Object.entries(daysData)) {
+    
+    // Конвертуємо Timestamp у дату YYYY-MM-DD
+    const dateObj = new Date(parseInt(timestamp) * 1000);
+    const dateStr = dateObj.toLocaleDateString("en-CA", { 
+      timeZone: "Europe/Kyiv" 
+    }); 
+
+    // Проходимо по групах (GPV1.1 -> 1.1)
+    for (const [gpvKey, hours] of Object.entries(queues)) {
+      const groupKey = gpvKey.replace("GPV", ""); // "1.1"
+
+      if (!scheduleMap[groupKey]) {
+        scheduleMap[groupKey] = {};
+      }
+      if (!scheduleMap[groupKey][dateStr]) {
+        scheduleMap[groupKey][dateStr] = {};
+      }
+
+      // Проходимо по годинах (1..24)
+      for (let h = 1; h <= 24; h++) {
+        const status = hours[h.toString()];
+        
+        // Форматуємо 00:00, 00:30
+        const hourIndex = h - 1;
+        const hourStr = hourIndex.toString().padStart(2, "0");
+        const slot00 = `${hourStr}:00`;
+        const slot30 = `${hourStr}:30`;
+
+        let val00, val30;
+
+        // ВАЖЛИВО: Формат Svitlo.live
+        // 1 = Є світло (ON)
+        // 2 = Немає світла (OFF)
+        
+        switch (status) {
+          case "yes": // Світло є
+            val00 = 1; val30 = 1;
+            break;
+          case "no": // Світла немає
+            val00 = 2; val30 = 2;
+            break;
+          case "first": // Немає перші 30 хв (OFF, ON) -> (2, 1)
+            val00 = 2; val30 = 1;
+            break;
+          case "second": // Немає другі 30 хв (ON, OFF) -> (1, 2)
+            val00 = 1; val30 = 2;
+            break;
+          default: // Сіра зона або помилка - вважаємо що світло є (1)
+            val00 = 1; val30 = 1;
+        }
+
+        scheduleMap[groupKey][dateStr][slot00] = val00;
+        scheduleMap[groupKey][dateStr][slot30] = val30;
+      }
+    }
+  }
+  return scheduleMap;
+}
+
+// 3. ГОЛОВНИЙ ЗАПУСК
 async function run() {
-  const info = await getInfo()
+  console.log("🔄 Starting DTEK update...");
   
-  // Зберігаємо файл у папку artifacts (або корінь), щоб GitHub його підхопив
+  const rawInfo = await getInfo()
+  
+  if (!rawInfo) {
+    console.error("❌ Failed to fetch data");
+    process.exit(1);
+  }
+
+  // Трансформуємо графік
+  const cleanSchedule = transformToSvitloFormat(rawInfo);
+
+  // Створюємо об'єкт регіону (Тільки Київська область, як ви просили)
+  const kyivRegion = {
+    "cpu": "kiivska-oblast",
+    "name_ua": "Київська",
+    "name_ru": "Киевская",
+    "name_en": "Kyiv",
+    "schedule": cleanSchedule
+  };
+
+  // Формуємо внутрішній об'єкт body (який буде стрічкою)
+  const bodyContent = {
+    "date_today": getKyivDate(0),
+    "date_tomorrow": getKyivDate(1),
+    "regions": [ kyivRegion ] // Тільки один регіон у масиві
+  };
+
+  // ФІНАЛЬНА СТРУКТУРА: body як stringified JSON + timestamp
+  const finalOutput = {
+    "body": JSON.stringify(bodyContent),
+    "timestamp": Date.now()
+  };
+
+  // Зберігаємо
   const outputPath = path.resolve("dtek.json")
-  fs.writeFileSync(outputPath, JSON.stringify(info, null, 2))
-  console.log("✅ Data saved to dtek.json")
+  fs.writeFileSync(outputPath, JSON.stringify(finalOutput, null, 2)) // null, 2 для читабельності зовнішнього файлу, але body всередині буде стиснутим
+  
+  console.log("✅ Data converted to Svitlo.live format and saved.");
 }
 
 run()

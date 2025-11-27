@@ -28,28 +28,24 @@ jobs:
 
       - name: Run monitoring script
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          # Телеграм токени можна прибрати, якщо ви їх видалили з коду
           CITY: ${{ secrets.CITY }}
           STREET: ${{ secrets.STREET }}
           HOUSE: ${{ secrets.HOUSE }}
         run: node ./src/monitor.js
 
-      - name: Commit updated artifacts
+      - name: Commit updated data
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-          git add artifacts/
+          # Додаємо наш новий файл
+          git add dtek.json
 
+          # Перевіряємо, чи є зміни, щоб не робити пустих комітів
           if ! git diff --cached --quiet; then
-            LAST_COMMIT_MSG=$(git log -1 --pretty=%B || echo "")
-            if [ "$LAST_COMMIT_MSG" = "chore: update artifacts" ]; then
-              git commit --amend --no-edit
-            else
-              git commit -m "chore: update artifacts"
-            fi
-            git push origin main --force-with-lease
+            git commit -m "update: dtek data [skip ci]"
+            git push
           else
             echo "No changes to commit"
           fi

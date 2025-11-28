@@ -4,10 +4,10 @@ on:
   schedule:
     - cron: "*/10 * * * *"
   workflow_dispatch:
-  
+
 permissions:
   contents: write
-  
+
 jobs:
   monitor:
     runs-on: ubuntu-latest
@@ -31,14 +31,28 @@ jobs:
 
       - name: Run monitoring script
         env:
-          # Телеграм токени можна прибрати, якщо ви їх видалили з коду
-          CITY: ${{ secrets.CITY }}
-          STREET: ${{ secrets.STREET }}
-          HOUSE: ${{ secrets.HOUSE }}
+          # --- КИЇВСЬКА ОБЛАСТЬ ---
+          # (Використовуємо старі секрети, але мапимо їх на нові змінні для monitor.js)
+          CITY_KYIV: ${{ secrets.CITY }}
+          STREET_KYIV: ${{ secrets.STREET }}
+          HOUSE_KYIV: ${{ secrets.HOUSE }}
+          
+          # --- ОДЕСЬКА ОБЛАСТЬ ---
+          # (Ці секрети треба додати в налаштуваннях репозиторію)
+          CITY_ODESA: ${{ secrets.CITY_ODESA }}
+          STREET_ODESA: ${{ secrets.STREET_ODESA }}
+          HOUSE_ODESA: ${{ secrets.HOUSE_ODESA }}
+          
+          # --- ДНІПРОПЕТРОВСЬКА ОБЛАСТЬ ---
+          # (Ці секрети треба додати в налаштуваннях репозиторію)
+          CITY_DNIPRO: ${{ secrets.CITY_DNIPRO }}
+          STREET_DNIPRO: ${{ secrets.STREET_DNIPRO }}
+          HOUSE_DNIPRO: ${{ secrets.HOUSE_DNIPRO }}
+          
+          # --- CLOUDFLARE WORKER ---
           CF_WORKER_URL: ${{ secrets.CF_WORKER_URL }}
           CF_WORKER_TOKEN: ${{ secrets.CF_WORKER_TOKEN }}
         run: node ./src/monitor.js
-
 
       - name: Commit updated data
         run: |

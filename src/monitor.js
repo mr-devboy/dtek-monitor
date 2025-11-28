@@ -1,191 +1,202 @@
 import { chromium } from "playwright"
 import path from "node:path"
-import { CITY, STREET, HOUSE, SHUTDOWNS_PAGE } from "./constants.js"
+import { CF_WORKER_URL, CF_WORKER_TOKEN } from "./constants.js" // Константи CITY/STREET більше не потрібні
 
-// Беремо змінні для Cloudflare з оточення
-const { CF_WORKER_URL, CF_WORKER_TOKEN } = process.env;
+// --- КОНФІГУРАЦІЯ РЕГІОНІВ ---
+const REGIONS_CONFIG = [
+  {
+    cpu: "kiivska-oblast",
+    url: "https://www.dtek-krem.com.ua/ua/shutdowns",
+    name_ua: "Київська область",
+    name_en: "Kyiv Region"
+  },
+  {
+    cpu: "odeska-oblast",
+    url: "https://www.dtek-oem.com.ua/ua/shutdowns",
+    name_ua: "Одеська",
+    name_en: "Odesa"
+  },
+  {
+    cpu: "dnipropetrovska-oblast",
+    url: "https://www.dtek-dnem.com.ua/ua/shutdowns",
+    name_ua: "Дніпропетровська",
+    name_en: "Dnipropetrovsk"
+  }
+];
 
-// Допоміжна функція (залишаємо як фолбек)
+// Допоміжна функція для фолбек-дати
 function getKyivDate(offsetDays = 0) {
   const date = new Date();
   date.setDate(date.getDate() + offsetDays);
   return date.toLocaleDateString("en-CA", { timeZone: "Europe/Kyiv" });
 }
 
-// 1. ФУНКЦІЯ ОТРИМАННЯ ДАНИХ (ПАРСИНГ)
-async function getInfo() {
-  const browser = await chromium.launch({ headless: true })
+// 1. УНІВЕРСАЛЬНА ФУНКЦІЯ ПАРСИНГУ (Без адреси, бере глобальний графік)
+async function getRegionSchedule(page, regionConfig) {
+  console.log(`🌍 Visiting: ${regionConfig.url}...`);
   try {
-    const browserPage = await browser.newPage()
-    await browserPage.goto(SHUTDOWNS_PAGE, { waitUntil: "load" })
+    await page.goto(regionConfig.url, { waitUntil: "domcontentloaded", timeout: 60000 });
+    
+    // Чекаємо поки з'явиться змінна з графіком
+    try {
+        await page.waitForFunction(() => typeof window.DisconSchedule !== 'undefined' && window.DisconSchedule.fact, { timeout: 15000 });
+    } catch (e) {
+        console.warn(`⚠️ Warning: Timeout waiting for DisconSchedule on ${regionConfig.cpu}`);
+    }
 
-    const csrfTokenTag = await browserPage.waitForSelector('meta[name="csrf-token"]', { state: "attached" })
-    const csrfToken = await csrfTokenTag.getAttribute("content")
+    // Витягуємо дані
+    const rawData = await page.evaluate(() => {
+      if (window.DisconSchedule && window.DisconSchedule.fact) {
+        // У деяких версіях сайту дані можуть бути глибше
+        return window.DisconSchedule.fact.data || window.DisconSchedule.fact;
+      }
+      return null;
+    });
 
-    const info = await browserPage.evaluate(
-      async ({ CITY, STREET, csrfToken }) => {
-        const formData = new URLSearchParams()
-        formData.append("method", "getHomeNum")
-        formData.append("data[0][name]", "city")
-        formData.append("data[0][value]", CITY)
-        formData.append("data[1][name]", "street")
-        formData.append("data[1][value]", STREET)
-        formData.append("data[2][name]", "updateFact")
-        formData.append("data[2][value]", new Date().toLocaleString("uk-UA"))
+    if (!rawData) {
+      throw new Error(`DisconSchedule not found on ${regionConfig.cpu}`);
+    }
 
-        const response = await fetch("/ua/ajax", {
-          method: "POST",
-          headers: { "x-requested-with": "XMLHttpRequest", "x-csrf-token": csrfToken },
-          body: formData,
-        })
-        return await response.json()
-      },
-      { CITY, STREET, csrfToken }
-    )
-    return info
+    return rawData;
+
   } catch (error) {
-    console.error("Scraping error:", error)
-    return null
-  } finally {
-    await browser.close()
+    console.error(`❌ Error scraping ${regionConfig.cpu}:`, error.message);
+    return null;
   }
 }
 
-// 2. ФУНКЦІЯ ТРАНСФОРМАЦІЇ ПІД ФОРМАТ SVITLO.LIVE
-function transformToSvitloFormat(dtekRaw) {
-  // Перевірка структури даних
-  let daysData = null;
-  if (dtekRaw?.data?.fact?.data) daysData = dtekRaw.data.fact.data;
-  else if (dtekRaw?.fact?.data) daysData = dtekRaw.fact.data;
-  else if (dtekRaw?.data) daysData = dtekRaw.data;
-
-  if (!daysData) return {};
+// 2. ФУНКЦІЯ ТРАНСФОРМАЦІЇ (Адаптована під формат Svitlo.live)
+function transformToSvitloFormat(rawData, regionConfig, globalDates) {
+  if (!rawData) return null;
 
   const scheduleMap = {};
+  
+  // Сортуємо таймстемпи (дати)
+  const timestamps = Object.keys(rawData).sort();
 
-  // Проходимо по днях (Timestamp ключів)
-  for (const [timestamp, queues] of Object.entries(daysData)) {
-    
-    // Конвертуємо Timestamp у дату YYYY-MM-DD
-    const dateObj = new Date(parseInt(timestamp) * 1000);
-    const dateStr = dateObj.toLocaleDateString("en-CA", { 
-      timeZone: "Europe/Kyiv" 
-    }); 
-
-    // Проходимо по групах (GPV1.1 -> 1.1)
-    for (const [gpvKey, hours] of Object.entries(queues)) {
-      const groupKey = gpvKey.replace("GPV", ""); // "1.1"
-
-      if (!scheduleMap[groupKey]) {
-        scheduleMap[groupKey] = {};
+  // Оновлюємо глобальні дати, якщо це перший успішний регіон
+  if (!globalDates.today && timestamps.length > 0) {
+      const d1 = new Date(parseInt(timestamps[0]) * 1000);
+      globalDates.today = d1.toLocaleDateString("en-CA", { timeZone: "Europe/Kyiv" });
+      
+      if (timestamps[1]) {
+          const d2 = new Date(parseInt(timestamps[1]) * 1000);
+          globalDates.tomorrow = d2.toLocaleDateString("en-CA", { timeZone: "Europe/Kyiv" });
+      } else {
+          globalDates.tomorrow = globalDates.today;
       }
-      if (!scheduleMap[groupKey][dateStr]) {
-        scheduleMap[groupKey][dateStr] = {};
-      }
+  }
 
-      // Проходимо по годинах (1..24)
+  for (const ts of timestamps) {
+    const dateObj = new Date(parseInt(ts) * 1000);
+    const dateStr = dateObj.toLocaleDateString("en-CA", { timeZone: "Europe/Kyiv" });
+    const groupsData = rawData[ts];
+
+    for (const [gpvKey, hours] of Object.entries(groupsData)) {
+      // "GPV1.1" -> "1.1"
+      const groupKey = gpvKey.replace("GPV", "");
+
+      if (!scheduleMap[groupKey]) scheduleMap[groupKey] = {};
+      if (!scheduleMap[groupKey][dateStr]) scheduleMap[groupKey][dateStr] = {};
+
       for (let h = 1; h <= 24; h++) {
-        const status = hours[h.toString()];
+        const status = hours[h]; // Може бути числом або рядком ("yes"/"no") залежно від сайту
         
-        // Форматуємо 00:00, 00:30
+        // --- ЛОГІКА МАПІНГУ ---
+        // Svitlo.live: 1 = ON, 2 = OFF
+        let val00 = 1, val30 = 1;
+
+        // ДТЕК іноді віддає "yes"/"no", іноді "1"/"0"
+        const isOff = (status === "no" || status === "0" || status === 0);
+        const isOn = (status === "yes" || status === "1" || status === 1);
+        const isFirst = (status === "first");   // Немає перші 30 хв
+        const isSecond = (status === "second"); // Немає другі 30 хв
+
+        if (isOff) { val00 = 2; val30 = 2; }
+        else if (isFirst) { val00 = 2; val30 = 1; }
+        else if (isSecond) { val00 = 1; val30 = 2; }
+        // else isOn або unknown -> залишаємо 1 (світло є)
+
         const hourIndex = h - 1;
-        const hourStr = hourIndex.toString().padStart(2, "0");
-        const slot00 = `${hourStr}:00`;
-        const slot30 = `${hourStr}:30`;
-
-        let val00, val30;
-
-        // ВАЖЛИВО: Формат Svitlo.live
-        // 1 = Є світло (ON)
-        // 2 = Немає світла (OFF)
-        
-        switch (status) {
-          case "yes": // Світло є
-            val00 = 1; val30 = 1;
-            break;
-          case "no": // Світла немає
-            val00 = 2; val30 = 2;
-            break;
-          case "first": // Немає перші 30 хв (OFF, ON) -> (2, 1)
-            val00 = 2; val30 = 1;
-            break;
-          case "second": // Немає другі 30 хв (ON, OFF) -> (1, 2)
-            val00 = 1; val30 = 2;
-            break;
-          default: // Сіра зона або помилка - вважаємо що світло є (1)
-            val00 = 1; val30 = 1;
-        }
-
-        scheduleMap[groupKey][dateStr][slot00] = val00;
-        scheduleMap[groupKey][dateStr][slot30] = val30;
+        const hh = String(hourIndex).padStart(2, "0");
+        scheduleMap[groupKey][dateStr][`${hh}:00`] = val00;
+        scheduleMap[groupKey][dateStr][`${hh}:30`] = val30;
       }
     }
   }
-  return scheduleMap;
+
+  // Повертаємо об'єкт регіону
+  return {
+    cpu: regionConfig.cpu,
+    name_ua: regionConfig.name_ua,
+    name_ru: regionConfig.name_ua, // Фолбек
+    name_en: regionConfig.name_en,
+    schedule: scheduleMap
+  };
 }
 
 // 3. ГОЛОВНИЙ ЗАПУСК
 async function run() {
-  console.log("🔄 Starting DTEK update...");
+  console.log("🚀 Starting Multi-Region DTEK Scraper...");
   
-  const rawInfo = await getInfo()
+  const browser = await chromium.launch({ headless: true });
+  const processedRegions = [];
   
-  if (!rawInfo) {
-    console.error("❌ Failed to fetch data");
+  // Об'єкт для зберігання дат (заповниться даними з сайтів)
+  const globalDates = { today: null, tomorrow: null };
+
+  try {
+    const page = await browser.newPage();
+    
+    // Проходимо по черзі кожен регіон
+    for (const regionConfig of REGIONS_CONFIG) {
+      const rawData = await getRegionSchedule(page, regionConfig);
+      
+      if (rawData) {
+        const regionJson = transformToSvitloFormat(rawData, regionConfig, globalDates);
+        if (regionJson) {
+          processedRegions.push(regionJson);
+          console.log(`✅ Processed: ${regionConfig.cpu}`);
+        }
+      }
+    }
+
+  } catch (err) {
+    console.error("Critical error:", err);
+  } finally {
+    await browser.close();
+  }
+
+  if (processedRegions.length === 0) {
+    console.error("❌ No data collected. Exiting.");
     process.exit(1);
   }
 
-  // Трансформуємо графік
-  const cleanSchedule = transformToSvitloFormat(rawInfo);
+  // Фолбек для дат, якщо раптом не знайшлися
+  if (!globalDates.today) {
+    globalDates.today = getKyivDate(0);
+    globalDates.tomorrow = getKyivDate(1);
+  }
 
-  // --- ВИПРАВЛЕННЯ ДАТ ---
-  // Ми витягуємо дати прямо з отриманих даних, а не генеруємо їх
-  const availableDates = new Set();
-  
-  // Проходимось по всіх групах, щоб знайти всі можливі дати
-  Object.values(cleanSchedule).forEach(groupData => {
-    Object.keys(groupData).forEach(date => availableDates.add(date));
-  });
-
-  // Сортуємо дати (2025-11-27, 2025-11-28...)
-  const sortedDates = Array.from(availableDates).sort();
-
-  // Беремо першу дату як "сьогодні", другу як "завтра" (якщо є)
-  // Якщо даних немає, використовуємо фолбек getKyivDate
-  const realDateToday = sortedDates[0] || getKyivDate(0);
-  const realDateTomorrow = sortedDates[1] || getKyivDate(1);
-  // -----------------------
-
-  // Створюємо об'єкт регіону
-  const kyivRegion = {
-    "cpu": "kiivska-oblast",
-    "name_ua": "Київська",
-    "name_ru": "Киевская",
-    "name_en": "Kyiv",
-    "schedule": cleanSchedule
-  };
-
-  // Формуємо внутрішній об'єкт body
+  // ФОРМУВАННЯ ФІНАЛЬНОГО JSON (Масив регіонів)
   const bodyContent = {
-    "date_today": realDateToday,      // <--- ТЕПЕР ТУТ РЕАЛЬНА ДАТА З ГРАФІКУ
-    "date_tomorrow": realDateTomorrow, // <--- ТЕПЕР ТУТ РЕАЛЬНА ДАТА З ГРАФІКУ
-    "regions": [ kyivRegion ]
+    date_today: globalDates.today,
+    date_tomorrow: globalDates.tomorrow,
+    regions: processedRegions // <--- ТУТ ТЕПЕР СПИСОК (Київ, Одеса, Дніпро)
   };
 
-  // ФІНАЛЬНА СТРУКТУРА
   const finalOutput = {
-    "body": JSON.stringify(bodyContent),
-    "timestamp": Date.now()
+    body: JSON.stringify(bodyContent),
+    timestamp: Date.now()
   };
 
-  // --- ВІДПРАВКА НА CLOUDFLARE ---
-  // Перевіряємо чи є змінні
+  // ВІДПРАВКА НА WORKER
   if (!CF_WORKER_URL || !CF_WORKER_TOKEN) {
-      console.error("❌ Missing CF_WORKER_URL or CF_WORKER_TOKEN secrets!");
+      console.error("❌ Missing CF_WORKER_URL or CF_WORKER_TOKEN!");
       process.exit(1);
   }
 
-  console.log(`🚀 Sending data to Cloudflare...`);
+  console.log(`📤 Sending consolidated data (${processedRegions.length} regions) to Cloudflare...`);
 
   try {
       const response = await fetch(CF_WORKER_URL, {
@@ -200,12 +211,11 @@ async function run() {
       if (!response.ok) {
           throw new Error(`Worker Error: ${response.status} ${await response.text()}`);
       }
-
-      console.log(`✅ Data converted and sent to Cloudflare! Dates: ${realDateToday}, ${realDateTomorrow}`);
+      console.log(`✅ Success! Data sent to Cloudflare.`);
   } catch (err) {
-      console.error("❌ Failed to send data to Cloudflare:", err.message);
+      console.error("❌ Failed to send data:", err.message);
       process.exit(1);
   }
 }
 
-run()
+run();

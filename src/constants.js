@@ -1,8 +1,17 @@
 import path from "node:path"
 
-export const { TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, CITY, STREET, HOUSE } =
-  process.env
+export const { 
+  // Київ (оновлено)
+  CITY_KYIV, STREET_KYIV, HOUSE_KYIV,
+  
+  // Одеса
+  CITY_ODESA, STREET_ODESA, HOUSE_ODESA,
+  
+  // Дніпро
+  CITY_DNIPRO, STREET_DNIPRO, HOUSE_DNIPRO,
 
-export const SHUTDOWNS_PAGE = "https://www.dtek-krem.com.ua/ua/shutdowns"
+  // Cloudflare
+  CF_WORKER_URL, CF_WORKER_TOKEN 
+} = process.env
 
-export const LAST_MESSAGE_FILE = path.resolve("artifacts", `last-message.json`)
+export const SHUTDOWNS_PAGE = "https://www.dtek-krem.com.ua/ua/shutdowns" // Фолбек, не критично

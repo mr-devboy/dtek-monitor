@@ -1,7 +1,7 @@
 import { chromium } from "playwright"
 import path from "node:path"
 import { 
-  CITY_KYIV, STREET_KYIV, HOUSE_KYIV, // <--- ОНОВЛЕНО
+  CITY_KYIV, STREET_KYIV, HOUSE_KYIV,
   CITY_ODESA, STREET_ODESA, HOUSE_ODESA,
   CITY_DNIPRO, STREET_DNIPRO, HOUSE_DNIPRO,
   CF_WORKER_URL, CF_WORKER_TOKEN 
@@ -12,10 +12,11 @@ const REGIONS_CONFIG = [
   {
     id: "kiivska-oblast",
     url: "https://www.dtek-krem.com.ua/ua/shutdowns",
-    city: CITY_KYIV,     // <--- ОНОВЛЕНО
-    street: STREET_KYIV, // <--- ОНОВЛЕНО
-    house: HOUSE_KYIV,   // <--- ОНОВЛЕНО
+    city: CITY_KYIV,
+    street: STREET_KYIV,
+    house: HOUSE_KYIV,
     name_ua: "Київська",
+    name_ru: "Киевская",       // <--- Додано
     name_en: "Kyiv"
   },
   {
@@ -25,6 +26,7 @@ const REGIONS_CONFIG = [
     street: STREET_ODESA,
     house: HOUSE_ODESA,
     name_ua: "Одеська",
+    name_ru: "Одесская",       // <--- Додано (як в оригіналі)
     name_en: "Odesa"
   },
   {
@@ -34,11 +36,12 @@ const REGIONS_CONFIG = [
     street: STREET_DNIPRO,
     house: HOUSE_DNIPRO,
     name_ua: "Дніпропетровська",
-    name_en: "Dnipro"
+    name_ru: "Днепропетровская", // <--- Додано (як в оригіналі)
+    name_en: "Dnipropetrovsk"    // Виправив з Dnipro на Dnipropetrovsk (як в оригіналі)
   }
 ];
 
-// Допоміжна функція дати
+// Допоміжна функція (залишаємо як фолбек)
 function getKyivDate(offsetDays = 0) {
   const date = new Date();
   date.setDate(date.getDate() + offsetDays);
@@ -47,9 +50,8 @@ function getKyivDate(offsetDays = 0) {
 
 // 1. ФУНКЦІЯ ОТРИМАННЯ ДАНИХ (ПАРСИНГ ОДНОГО РЕГІОНУ)
 async function getRegionInfo(browser, config) {
-  // Перевіряємо, чи є адреса для цього регіону
   if (!config.city || !config.street || !config.house) {
-    console.warn(`⚠️ Skipping ${config.id}: Missing address secrets (CITY/STREET/HOUSE).`);
+    console.log(`ℹ️ Skipping ${config.id}: No address configured.`);
     return null;
   }
 
@@ -62,7 +64,6 @@ async function getRegionInfo(browser, config) {
     const csrfTokenTag = await page.waitForSelector('meta[name="csrf-token"]', { state: "attached" });
     const csrfToken = await csrfTokenTag.getAttribute("content");
 
-    // Виконуємо запит всередині браузера
     const info = await page.evaluate(
       async ({ city, street, house, csrfToken }) => {
         const formData = new URLSearchParams();
@@ -143,7 +144,7 @@ function transformToSvitloFormat(dtekRaw) {
 
 // 3. ГОЛОВНИЙ ЗАПУСК
 async function run() {
-  console.log("🚀 Starting Multi-Region DTEK Scraper (Address Method)...");
+  console.log("🚀 Starting Multi-Region DTEK Scraper...");
   
   const browser = await chromium.launch({ headless: true });
   const processedRegions = [];
@@ -157,7 +158,7 @@ async function run() {
         const cleanSchedule = transformToSvitloFormat(rawInfo);
         
         if (Object.keys(cleanSchedule).length > 0) {
-            console.log(`✅ Success: ${config.id}`);
+            console.log(`✅ Success data for: ${config.id}`);
             
             if (!globalDates.today) {
                  const dates = new Set();
@@ -170,12 +171,12 @@ async function run() {
             processedRegions.push({
                 cpu: config.id,
                 name_ua: config.name_ua,
-                name_ru: config.name_ua,
+                name_ru: config.name_ru, // <--- ТЕПЕР ПРАВИЛЬНА НАЗВА З КОНФІГА
                 name_en: config.name_en,
                 schedule: cleanSchedule
             });
         } else {
-            console.warn(`⚠️ Data fetched for ${config.id}, but schedule is empty.`);
+            console.warn(`⚠️ Warning: Got response for ${config.id}, but schedule is empty.`);
         }
       }
     }
@@ -204,6 +205,7 @@ async function run() {
     timestamp: Date.now()
   };
 
+  // ВІДПРАВКА
   if (!CF_WORKER_URL || !CF_WORKER_TOKEN) {
       console.error("❌ Missing CF_WORKER_URL or CF_WORKER_TOKEN secrets!");
       process.exit(1);

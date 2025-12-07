@@ -14,4 +14,5 @@ export const {
   CF_WORKER_URL, CF_WORKER_TOKEN 
 } = process.env
 
-export const SHUTDOWNS_PAGE = "https://www.dtek-krem.com.ua/ua/shutdowns" // Фолбек, не критично
+export const SHUTDOWNS_PAGE = "https://www.dtek-krem.com.ua/ua/shutdowns"
+export const LVIV_JSON_URL = "https://raw.githubusercontent.com/yaroslav2901/OE_OUTAGE_DATA/main/data/Lvivoblenerho.json"

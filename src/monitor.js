@@ -4,11 +4,12 @@ import {
   CITY_KYIV, STREET_KYIV, HOUSE_KYIV,
   CITY_ODESA, STREET_ODESA, HOUSE_ODESA,
   CITY_DNIPRO, STREET_DNIPRO, HOUSE_DNIPRO,
-  CF_WORKER_URL, CF_WORKER_TOKEN 
+  CF_WORKER_URL, CF_WORKER_TOKEN,
+  LVIV_JSON_URL // <--- Додано імпорт
 } from "./constants.js"
 
-// --- НАЛАШТУВАННЯ РЕГІОНІВ ---
-const REGIONS_CONFIG = [
+// --- КОНФІГУРАЦІЯ РЕГІОНІВ (ДТЕК) ---
+const DTEK_REGIONS = [
   {
     id: "kiivska-oblast",
     url: "https://www.dtek-krem.com.ua/ua/shutdowns",
@@ -16,7 +17,7 @@ const REGIONS_CONFIG = [
     street: STREET_KYIV,
     house: HOUSE_KYIV,
     name_ua: "Київська",
-    name_ru: "Киевская",       // <--- Додано
+    name_ru: "Киевская",
     name_en: "Kyiv"
   },
   {
@@ -26,7 +27,7 @@ const REGIONS_CONFIG = [
     street: STREET_ODESA,
     house: HOUSE_ODESA,
     name_ua: "Одеська",
-    name_ru: "Одесская",       // <--- Додано (як в оригіналі)
+    name_ru: "Одесская",
     name_en: "Odesa"
   },
   {
@@ -36,26 +37,26 @@ const REGIONS_CONFIG = [
     street: STREET_DNIPRO,
     house: HOUSE_DNIPRO,
     name_ua: "Дніпропетровська",
-    name_ru: "Днепропетровская", // <--- Додано (як в оригіналі)
-    name_en: "Dnipropetrovsk"    // Виправив з Dnipro на Dnipropetrovsk (як в оригіналі)
+    name_ru: "Днепропетровская",
+    name_en: "Dnipropetrovsk"
   }
 ];
 
-// Допоміжна функція (залишаємо як фолбек)
+// Допоміжна функція дати
 function getKyivDate(offsetDays = 0) {
   const date = new Date();
   date.setDate(date.getDate() + offsetDays);
   return date.toLocaleDateString("en-CA", { timeZone: "Europe/Kyiv" });
 }
 
-// 1. ФУНКЦІЯ ОТРИМАННЯ ДАНИХ (ПАРСИНГ ОДНОГО РЕГІОНУ)
-async function getRegionInfo(browser, config) {
+// 1. ОТРИМАННЯ ДАНИХ ДТЕК (Через Playwright)
+async function getDtekRegionInfo(browser, config) {
   if (!config.city || !config.street || !config.house) {
-    console.log(`ℹ️ Skipping ${config.id}: No address configured.`);
+    console.log(`ℹ️ Skipping DTEK ${config.id}: No address configured.`);
     return null;
   }
 
-  console.log(`🌍 Visiting ${config.url} (${config.city}, ${config.street})...`);
+  console.log(`🌍 Visiting DTEK ${config.url}...`);
   
   const page = await browser.newPage();
   try {
@@ -89,18 +90,33 @@ async function getRegionInfo(browser, config) {
     
     return info;
   } catch (error) {
-    console.error(`❌ Error scraping ${config.id}:`, error.message);
+    console.error(`❌ Error scraping DTEK ${config.id}:`, error.message);
     return null;
   } finally {
     await page.close();
   }
 }
 
-// 2. ФУНКЦІЯ ТРАНСФОРМАЦІЇ
+// 2. ОТРИМАННЯ ДАНИХ ЛЬВОВА (Через fetch JSON) - НОВА ФУНКЦІЯ
+async function getLvivData() {
+  console.log(`🌍 Fetching Lviv data from GitHub JSON...`);
+  try {
+    const response = await fetch(LVIV_JSON_URL);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    return data;
+  } catch (e) {
+    console.error("❌ Error fetching Lviv data:", e.message);
+    return null;
+  }
+}
+
+// 3. ФУНКЦІЯ ТРАНСФОРМАЦІЇ (Універсальна)
 function transformToSvitloFormat(dtekRaw) {
   let daysData = null;
+  // Перевіряємо різні структури (ДТЕК vs Львів)
   if (dtekRaw?.data?.fact?.data) daysData = dtekRaw.data.fact.data;
-  else if (dtekRaw?.fact?.data) daysData = dtekRaw.fact.data;
+  else if (dtekRaw?.fact?.data) daysData = dtekRaw.fact.data; // Це підходить для Львова
   else if (dtekRaw?.data) daysData = dtekRaw.data;
 
   if (!daysData) return {};
@@ -119,6 +135,8 @@ function transformToSvitloFormat(dtekRaw) {
 
       for (let h = 1; h <= 24; h++) {
         const status = hours[h.toString()];
+        
+        // Форматуємо 00:00, 00:30
         const hourIndex = h - 1;
         const hourStr = hourIndex.toString().padStart(2, "0");
         const slot00 = `${hourStr}:00`;
@@ -142,24 +160,26 @@ function transformToSvitloFormat(dtekRaw) {
   return scheduleMap;
 }
 
-// 3. ГОЛОВНИЙ ЗАПУСК
+// 4. ГОЛОВНИЙ ЗАПУСК
 async function run() {
-  console.log("🚀 Starting Multi-Region DTEK Scraper...");
+  console.log("🚀 Starting Multi-Region Scraper (DTEK + Lviv)...");
   
   const browser = await chromium.launch({ headless: true });
   const processedRegions = [];
   const globalDates = { today: null, tomorrow: null };
 
+  // --- ОБРОБКА ДТЕК ---
   try {
-    for (const config of REGIONS_CONFIG) {
-      const rawInfo = await getRegionInfo(browser, config);
+    for (const config of DTEK_REGIONS) {
+      const rawInfo = await getDtekRegionInfo(browser, config);
       
       if (rawInfo) {
         const cleanSchedule = transformToSvitloFormat(rawInfo);
         
         if (Object.keys(cleanSchedule).length > 0) {
-            console.log(`✅ Success data for: ${config.id}`);
+            console.log(`✅ Success DTEK: ${config.id}`);
             
+            // Збираємо дати
             if (!globalDates.today) {
                  const dates = new Set();
                  Object.values(cleanSchedule).forEach(g => Object.keys(g).forEach(d => dates.add(d)));
@@ -171,7 +191,7 @@ async function run() {
             processedRegions.push({
                 cpu: config.id,
                 name_ua: config.name_ua,
-                name_ru: config.name_ru, // <--- ТЕПЕР ПРАВИЛЬНА НАЗВА З КОНФІГА
+                name_ru: config.name_ru,
                 name_en: config.name_en,
                 schedule: cleanSchedule
             });
@@ -181,11 +201,38 @@ async function run() {
       }
     }
   } catch (err) {
-    console.error("Critical error:", err);
+    console.error("Critical error in DTEK loop:", err);
   } finally {
     await browser.close();
   }
 
+  // --- ОБРОБКА ЛЬВОВА (НОВЕ) ---
+  const lvivRaw = await getLvivData();
+  if (lvivRaw) {
+      const lvivSchedule = transformToSvitloFormat(lvivRaw);
+      if (Object.keys(lvivSchedule).length > 0) {
+          console.log(`✅ Success Lviv: lvivska-oblast`);
+          
+          // Оновлюємо дати, якщо ДТЕК не відпрацював
+          if (!globalDates.today) {
+               const dates = new Set();
+               Object.values(lvivSchedule).forEach(g => Object.keys(g).forEach(d => dates.add(d)));
+               const sorted = Array.from(dates).sort();
+               globalDates.today = sorted[0];
+               globalDates.tomorrow = sorted[1];
+          }
+
+          processedRegions.push({
+              cpu: "lvivska-oblast",
+              name_ua: "Львівська",
+              name_ru: "Львовская",
+              name_en: "Lviv",
+              schedule: lvivSchedule
+          });
+      }
+  }
+
+  // --- ПЕРЕВІРКА І ВІДПРАВКА ---
   if (processedRegions.length === 0) {
     console.error("❌ No data collected from any region. Exiting.");
     process.exit(1);

@@ -15,7 +15,7 @@ import {
 const DTEK_REGIONS = [
   {
     id: "kiivska-oblast",
-    url: "[https://www.dtek-krem.com.ua/ua/shutdowns](https://www.dtek-krem.com.ua/ua/shutdowns)",
+    url: "https://www.dtek-krem.com.ua/ua/shutdowns",
     city: CITY_KYIV,
     street: STREET_KYIV,
     house: HOUSE_KYIV,
@@ -25,7 +25,7 @@ const DTEK_REGIONS = [
   },
   {
     id: "odeska-oblast",
-    url: "[https://www.dtek-oem.com.ua/ua/shutdowns](https://www.dtek-oem.com.ua/ua/shutdowns)",
+    url: "https://www.dtek-oem.com.ua/ua/shutdowns",
     city: CITY_ODESA,
     street: STREET_ODESA,
     house: HOUSE_ODESA,
@@ -35,7 +35,7 @@ const DTEK_REGIONS = [
   },
   {
     id: "dnipropetrovska-oblast",
-    url: "[https://www.dtek-dnem.com.ua/ua/shutdowns](https://www.dtek-dnem.com.ua/ua/shutdowns)",
+    url: "https://www.dtek-dnem.com.ua/ua/shutdowns",
     city: CITY_DNIPRO,
     street: STREET_DNIPRO,
     house: HOUSE_DNIPRO,

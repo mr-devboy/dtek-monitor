@@ -288,17 +288,17 @@ async function run() {
   }
 
   // 4. МІСТО ДНІПРО (YASNO - ДнЕМ)
-  const yasnoDniproDnemRaw = await getYasnoData(YASNO_DNIPRO_DNEM_URL, "Dnipro DHEM");
+  const yasnoDniproDnemRaw = await getYasnoData(YASNO_DNIPRO_DNEM_URL, "Dnipro DNEM");
   if (yasnoDniproDnemRaw) {
       const schedule = transformYasnoFormat(yasnoDniproDnemRaw);
       if (Object.keys(schedule).length > 0) {
-          console.log(`✅ Success Yasno Dnipro (DHEM)`);
+          console.log(`✅ Success Yasno Dnipro (DNEM)`);
           updateGlobalDates(schedule, globalDates);
           processedRegions.push({
               cpu: "dnipro-dnem",
               name_ua: "м. Дніпро (ДнЕМ)",
               name_ru: "г. Днепр (ДнЭМ)",
-              name_en: "Dnipro City (DHEM)",
+              name_en: "Dnipro City (DNEM)",
               schedule: schedule
           });
       }

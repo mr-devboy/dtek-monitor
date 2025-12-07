@@ -6,7 +6,9 @@ import {
   CITY_DNIPRO, STREET_DNIPRO, HOUSE_DNIPRO,
   CF_WORKER_URL, CF_WORKER_TOKEN,
   LVIV_JSON_URL,
-  YASNO_KYIV_URL // <--- Додано
+  YASNO_KYIV_URL,
+  YASNO_DNIPRO_DNEM_URL,
+  YASNO_DNIPRO_CEK_URL
 } from "./constants.js"
 
 // --- КОНФІГУРАЦІЯ РЕГІОНІВ (ДТЕК - ОБЛАСТІ) ---
@@ -111,15 +113,19 @@ async function getLvivData() {
   }
 }
 
-// 3. YASNO КИЇВ (API JSON)
-async function getYasnoData() {
-  console.log(`🌍 Fetching Yasno Kyiv data...`);
+// 3. YASNO (Універсальна функція для будь-якого URL Yasno)
+async function getYasnoData(url, label) {
+  console.log(`🌍 Fetching Yasno ${label} data...`);
   try {
-    const response = await fetch(YASNO_KYIV_URL);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const response = await fetch(url);
+    if (response.status === 304) {
+        console.log(`ℹ️ Yasno ${label}: 304 Not Modified (using cached is not possible here, assuming fail or retry)`);
+        // Якщо сервер Yasno вперто повертає 304, треба додати заголовки, але поки спробуємо так.
+    }
+    if (!response.ok && response.status !== 304) throw new Error(`HTTP ${response.status}`);
     return await response.json();
   } catch (e) {
-    console.error("❌ Error fetching Yasno data:", e.message);
+    console.error(`❌ Error fetching Yasno ${label} data:`, e.message);
     return null;
   }
 }
@@ -174,32 +180,25 @@ function transformYasnoFormat(yasnoRaw) {
   
   const scheduleMap = {};
 
-  // Структура: { "1.1": { "today": {...}, "tomorrow": {...} } }
   for (const [groupKey, daysData] of Object.entries(yasnoRaw)) {
-    // Група "1.1" -> "1.1"
     if (!scheduleMap[groupKey]) scheduleMap[groupKey] = {};
 
     for (const dayKey of ["today", "tomorrow"]) {
       const dayInfo = daysData[dayKey];
       if (!dayInfo || !dayInfo.date) continue;
 
-      // "2025-12-07T00:00:00+02:00" -> "2025-12-07"
       const dateStr = dayInfo.date.substring(0, 10);
       if (!scheduleMap[groupKey][dateStr]) scheduleMap[groupKey][dateStr] = {};
 
       const slots = dayInfo.slots || [];
-      const halfHours = new Array(48).fill(1); // За замовчуванням 1 (Світло є)
+      const halfHours = new Array(48).fill(1); // 1 = Світло є
 
       slots.forEach(slot => {
-        // type: "Definite" (точно немає, 2), "NotPlanned" (світло є, 1)
-        // Можуть бути "Possible" (сіра зона), поки ставимо 2 (як відключення) для перестраховки
+        // "Definite" (2), "Possible" (2), "NotPlanned" (1)
         let status = 1;
         if (slot.type === "Definite") status = 2;
         else if (slot.type === "Possible") status = 2;
-        // else "NotPlanned" -> 1
 
-        // Конвертуємо хвилини в індекси масиву (0..47)
-        // 30 хв = 1 слот
         const startIdx = Math.floor(slot.start / 30);
         const endIdx = Math.floor(slot.end / 30);
 
@@ -210,7 +209,6 @@ function transformYasnoFormat(yasnoRaw) {
         }
       });
 
-      // Переганяємо масив у формат об'єкта "HH:MM": status
       for (let i = 0; i < 48; i++) {
         const hour = Math.floor(i / 2);
         const minute = (i % 2) === 0 ? "00" : "30";
@@ -224,7 +222,7 @@ function transformYasnoFormat(yasnoRaw) {
 
 // 4. ГОЛОВНИЙ ЗАПУСК
 async function run() {
-  console.log("🚀 Starting Multi-Region Scraper (DTEK + Lviv + Yasno)...");
+  console.log("🚀 Starting Multi-Region Scraper (DTEK + Lviv + Yasno[Kyiv/Dnipro])...");
   
   const browser = await chromium.launch({ headless: true });
   const processedRegions = [];
@@ -273,19 +271,52 @@ async function run() {
   }
 
   // 3. МІСТО КИЇВ (YASNO)
-  const yasnoRaw = await getYasnoData();
-  if (yasnoRaw) {
-      const yasnoSchedule = transformYasnoFormat(yasnoRaw);
+  const yasnoKyivRaw = await getYasnoData(YASNO_KYIV_URL, "Kyiv");
+  if (yasnoKyivRaw) {
+      const yasnoSchedule = transformYasnoFormat(yasnoKyivRaw);
       if (Object.keys(yasnoSchedule).length > 0) {
           console.log(`✅ Success Yasno Kyiv`);
           updateGlobalDates(yasnoSchedule, globalDates);
-          
           processedRegions.push({
-              cpu: "kyiv", // Важливо: це ідентифікатор для м. Київ
+              cpu: "kyiv",
               name_ua: "Київ",
               name_ru: "Киев",
               name_en: "Kyiv",
               schedule: yasnoSchedule
+          });
+      }
+  }
+
+  // 4. МІСТО ДНІПРО (YASNO - ДнЕМ)
+  const yasnoDniproDnemRaw = await getYasnoData(YASNO_DNIPRO_DNEM_URL, "Dnipro DHEM");
+  if (yasnoDniproDnemRaw) {
+      const schedule = transformYasnoFormat(yasnoDniproDnemRaw);
+      if (Object.keys(schedule).length > 0) {
+          console.log(`✅ Success Yasno Dnipro (DHEM)`);
+          updateGlobalDates(schedule, globalDates);
+          processedRegions.push({
+              cpu: "dnipro-dnem",
+              name_ua: "м. Дніпро (ДнЕМ)",
+              name_ru: "г. Днепр (ДнЭМ)",
+              name_en: "Dnipro City (DHEM)",
+              schedule: schedule
+          });
+      }
+  }
+
+  // 5. МІСТО ДНІПРО (YASNO - ЦЕК)
+  const yasnoDniproCekRaw = await getYasnoData(YASNO_DNIPRO_CEK_URL, "Dnipro CEK");
+  if (yasnoDniproCekRaw) {
+      const schedule = transformYasnoFormat(yasnoDniproCekRaw);
+      if (Object.keys(schedule).length > 0) {
+          console.log(`✅ Success Yasno Dnipro (CEK)`);
+          updateGlobalDates(schedule, globalDates);
+          processedRegions.push({
+              cpu: "dnipro-cek",
+              name_ua: "м. Дніпро (ЦЕК)",
+              name_ru: "г. Днепр (ЦЭК)",
+              name_en: "Dnipro City (CEK)",
+              schedule: schedule
           });
       }
   }

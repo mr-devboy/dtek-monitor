@@ -52,46 +52,57 @@ function getKyivDate(offsetDays = 0) {
   return date.toLocaleDateString("en-CA", { timeZone: "Europe/Kyiv" });
 }
 
-// 1. ДТЕК (Playwright) - ОНОВЛЕНА ФУНКЦІЯ З RETRY
+// Функція паузи
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+// 1. ДТЕК (Playwright) - МАКСИМАЛЬНО НАДІЙНА ВЕРСІЯ
 async function getDtekRegionInfo(browser, config) {
   if (!config.city || !config.street || !config.house) {
     console.log(`ℹ️ Skipping DTEK ${config.id}: No address configured.`);
     return null;
   }
 
-  const MAX_RETRIES = 3; // Кількість спроб
+  const MAX_RETRIES = 3;
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    console.log(`🌍 Visiting DTEK ${config.url} (Attempt ${attempt}/${MAX_RETRIES})...`);
-    
     let page = null;
     try {
-      page = await browser.newPage();
+      console.log(`🌍 Visiting DTEK ${config.id} (Attempt ${attempt}/${MAX_RETRIES})...`);
       
-      // Збільшуємо таймаут і чекаємо лише до domcontentloaded для швидкості
+      // Створюємо контекст з реалістичним User-Agent
+      const context = await browser.newContext({
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        locale: 'uk-UA'
+      });
+      
+      page = await context.newPage();
+      
+      // Збільшуємо таймаут навігації до 60 сек
       await page.goto(config.url, { waitUntil: "domcontentloaded", timeout: 60000 });
 
-      // ⚠️ ВАЖЛИВО: Чекаємо 3 секунди, щоб сайт встиг зробити свої редіректи/перезавантаження
-      // Це основний фікс проблеми "context destroyed"
-      await page.waitForTimeout(3000);
+      // ⚠️ ВАЖЛИВО: Чекаємо 5 секунд, щоб сайт встиг зробити всі редіректи/перезавантаження
+      await sleep(5000);
 
-      // Перевірка на екстрені відключення (HTML блок)
+      // --- Перевірка на екстрені відключення ---
+      // Використовуємо try/catch всередині, щоб збій тут не валив весь процес
       const isEmergency = await page.evaluate(() => {
-          const attentionBlock = document.querySelector('.m-attention__text');
-          if (!attentionBlock) return false;
-          const text = attentionBlock.innerText.toLowerCase();
-          return text.includes("екстрені") || text.includes("аварійні");
-      });
+          try {
+            const attentionBlock = document.querySelector('.m-attention__text');
+            if (!attentionBlock) return false;
+            const text = attentionBlock.innerText.toLowerCase();
+            return text.includes("екстрені") || text.includes("аварійні");
+          } catch (e) { return false; }
+      }).catch(() => false);
 
       if (isEmergency) {
           console.log(`⚠️ DETECTED EMERGENCY for ${config.id}`);
       }
 
-      // Чекаємо токен
-      const csrfTokenTag = await page.waitForSelector('meta[name="csrf-token"]', { state: "attached", timeout: 20000 });
+      // Чекаємо на CSRF токен (ознака того, що сторінка стабільна)
+      const csrfTokenTag = await page.waitForSelector('meta[name="csrf-token"]', { state: "attached", timeout: 15000 });
       const csrfToken = await csrfTokenTag.getAttribute("content");
 
-      // Виконуємо запит
+      // Виконуємо AJAX запит
       const info = await page.evaluate(
         async ({ city, street, house, csrfToken }) => {
           const formData = new URLSearchParams();
@@ -115,23 +126,20 @@ async function getDtekRegionInfo(browser, config) {
         { city: config.city, street: config.street, house: config.house, csrfToken }
       );
       
-      // Якщо дійшли сюди — все ок, закриваємо і повертаємо
-      await page.close();
+      await context.close(); // Закриваємо контекст чисто
       return { ...info, emergency: isEmergency };
 
     } catch (error) {
-      // Логуємо помилку, але не падаємо, якщо є ще спроби
-      console.warn(`⚠️ Error scraping DTEK ${config.id} (Attempt ${attempt}):`, error.message);
+      console.warn(`⚠️ Error scraping DTEK ${config.id}: ${error.message}`);
       
-      if (page) await page.close().catch(() => {}); // Закриваємо сторінку примусово
+      if (page) await page.close().catch(() => {});
       
       if (attempt === MAX_RETRIES) {
-          console.error(`❌ Failed DTEK ${config.id} after ${MAX_RETRIES} attempts.`);
+          console.error(`❌ Failed DTEK ${config.id} giving up.`);
           return null;
       }
-      
-      // Чекаємо перед наступною спробою
-      await new Promise(r => setTimeout(r, 5000));
+      // Чекаємо довше перед наступною спробою
+      await sleep(5000 + (attempt * 2000));
     }
   }
 }
@@ -149,25 +157,34 @@ async function getLvivData() {
   }
 }
 
-// 3. YASNO (Універсальна функція для будь-якого URL Yasno)
+// 3. YASNO (З RETRY)
 async function getYasnoData(url, label) {
-  console.log(`🌍 Fetching Yasno ${label} data...`);
-  try {
-    const response = await fetch(url);
-    if (response.status === 304) {
-        console.log(`ℹ️ Yasno ${label}: 304 Not Modified`);
-    }
-    if (!response.ok && response.status !== 304) throw new Error(`HTTP ${response.status}`);
-    return await response.json();
-  } catch (e) {
-    console.error(`❌ Error fetching Yasno ${label} data:`, e.message);
-    return null;
+  const MAX_RETRIES = 3;
+  
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        console.log(`🌍 Fetching Yasno ${label} data (Attempt ${attempt})...`);
+        const response = await fetch(url);
+        
+        if (response.status === 304) {
+            console.log(`ℹ️ Yasno ${label}: 304 Not Modified`);
+        }
+        
+        if (!response.ok && response.status !== 304) {
+             throw new Error(`HTTP ${response.status}`);
+        }
+        
+        return await response.json();
+      } catch (e) {
+        console.warn(`⚠️ Error fetching Yasno ${label}: ${e.message}`);
+        if (attempt === MAX_RETRIES) return null;
+        await sleep(3000);
+      }
   }
 }
 
 // --- ТРАНСФОРМАЦІЇ ---
 
-// Універсальна для ДТЕК / Львова
 function transformToSvitloFormat(dtekRaw) {
   let daysData = null;
   if (dtekRaw?.data?.fact?.data) daysData = dtekRaw.data.fact.data;
@@ -209,7 +226,6 @@ function transformToSvitloFormat(dtekRaw) {
   return scheduleMap;
 }
 
-// ⬇️ ОНОВЛЕНА ФУНКЦІЯ YASNO (ПАРСИТЬ ТАКОЖ STATUS) ⬇️
 function transformYasnoFormat(yasnoRaw) {
   if (!yasnoRaw) return { schedule: {}, emergency: false };
    
@@ -223,7 +239,6 @@ function transformYasnoFormat(yasnoRaw) {
       const dayInfo = daysData[dayKey];
       if (!dayInfo || !dayInfo.date) continue;
 
-      // --- ПЕРЕВІРКА НА АВАРІЮ ---
       if (dayInfo.status === "EmergencyShutdowns") {
           isEmergency = true;
       }
@@ -263,7 +278,7 @@ function transformYasnoFormat(yasnoRaw) {
 
 // 4. ГОЛОВНИЙ ЗАПУСК
 async function run() {
-  console.log("🚀 Starting Multi-Region Scraper (DTEK + Lviv + Yasno[Kyiv/Dnipro])...");
+  console.log("🚀 Starting Multi-Region Scraper (Robust Mode)...");
    
   const browser = await chromium.launch({ headless: true });
   const processedRegions = [];
@@ -272,6 +287,8 @@ async function run() {
   // 1. ДТЕК (ОБЛАСТІ)
   try {
     for (const config of DTEK_REGIONS) {
+      // Додаємо паузу між регіонами, щоб не бомбити сайт
+      await sleep(2000); 
       const rawInfo = await getDtekRegionInfo(browser, config);
       if (rawInfo) {
         const cleanSchedule = transformToSvitloFormat(rawInfo);
@@ -290,7 +307,7 @@ async function run() {
       }
     }
   } catch (err) {
-    console.error("DTEK Error:", err);
+    console.error("DTEK Critical Error:", err);
   } finally {
     await browser.close();
   }
@@ -313,11 +330,10 @@ async function run() {
       }
   }
 
-  // 3. МІСТО КИЇВ (YASNO)
+  // 3. YASNO KYIV
   const yasnoKyivRaw = await getYasnoData(YASNO_KYIV_URL, "Kyiv");
   if (yasnoKyivRaw) {
       const { schedule, emergency } = transformYasnoFormat(yasnoKyivRaw);
-      
       if (Object.keys(schedule).length > 0) {
           console.log(`✅ Success Yasno Kyiv (Emergency: ${emergency})`);
           updateGlobalDates(schedule, globalDates);
@@ -332,7 +348,7 @@ async function run() {
       }
   }
 
-  // 4. МІСТО ДНІПРО (YASNO - ДнЕМ)
+  // 4. YASNO DNIPRO (DNEM)
   const yasnoDniproDnemRaw = await getYasnoData(YASNO_DNIPRO_DNEM_URL, "Dnipro DNEM");
   if (yasnoDniproDnemRaw) {
       const { schedule, emergency } = transformYasnoFormat(yasnoDniproDnemRaw);
@@ -350,7 +366,7 @@ async function run() {
       }
   }
 
-  // 5. МІСТО ДНІПРО (YASNO - ЦЕК)
+  // 5. YASNO DNIPRO (CEK)
   const yasnoDniproCekRaw = await getYasnoData(YASNO_DNIPRO_CEK_URL, "Dnipro CEK");
   if (yasnoDniproCekRaw) {
       const { schedule, emergency } = transformYasnoFormat(yasnoDniproCekRaw);

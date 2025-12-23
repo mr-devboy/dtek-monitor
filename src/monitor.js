@@ -65,19 +65,16 @@ async function getDtekRegionInfo(browser, config) {
   try {
     await page.goto(config.url, { waitUntil: "load", timeout: 45000 });
 
-    // --- ПОЧАТОК ЗМІН: Перевірка на екстрені відключення ---
+    // Перевірка на екстрені відключення (HTML блок)
     const isEmergency = await page.evaluate(() => {
-        // Шукаємо блок уваги, який ви надали у прикладі
         const attentionBlock = document.querySelector('.m-attention__text');
         if (!attentionBlock) return false;
         const text = attentionBlock.innerText.toLowerCase();
-        // Шукаємо ключові слова
         return text.includes("екстрені") || text.includes("аварійні");
     });
     if (isEmergency) {
         console.log(`⚠️ DETECTED EMERGENCY for ${config.id}`);
     }
-    // --- КІНЕЦЬ ЗМІН ---
 
     const csrfTokenTag = await page.waitForSelector('meta[name="csrf-token"]', { state: "attached" });
     const csrfToken = await csrfTokenTag.getAttribute("content");
@@ -105,7 +102,6 @@ async function getDtekRegionInfo(browser, config) {
       { city: config.city, street: config.street, house: config.house, csrfToken }
     );
     
-    // Повертаємо дані графіку + статус аварії
     return { ...info, emergency: isEmergency };
 
   } catch (error) {
@@ -135,7 +131,7 @@ async function getYasnoData(url, label) {
   try {
     const response = await fetch(url);
     if (response.status === 304) {
-        console.log(`ℹ️ Yasno ${label}: 304 Not Modified (using cached is not possible here, assuming fail or retry)`);
+        console.log(`ℹ️ Yasno ${label}: 304 Not Modified`);
     }
     if (!response.ok && response.status !== 304) throw new Error(`HTTP ${response.status}`);
     return await response.json();
@@ -189,11 +185,12 @@ function transformToSvitloFormat(dtekRaw) {
   return scheduleMap;
 }
 
-// Трансформація Yasno (Хвилини -> Слоти)
+// ⬇️ ОНОВЛЕНА ФУНКЦІЯ YASNO (ПАРСИТЬ ТАКОЖ STATUS) ⬇️
 function transformYasnoFormat(yasnoRaw) {
-  if (!yasnoRaw) return {};
+  if (!yasnoRaw) return { schedule: {}, emergency: false };
    
   const scheduleMap = {};
+  let isEmergency = false;
 
   for (const [groupKey, daysData] of Object.entries(yasnoRaw)) {
     if (!scheduleMap[groupKey]) scheduleMap[groupKey] = {};
@@ -202,6 +199,12 @@ function transformYasnoFormat(yasnoRaw) {
       const dayInfo = daysData[dayKey];
       if (!dayInfo || !dayInfo.date) continue;
 
+      // --- ПЕРЕВІРКА НА АВАРІЮ ---
+      // Якщо хоча б в одній групі/дні є статус EmergencyShutdowns — вважаємо, що аварія
+      if (dayInfo.status === "EmergencyShutdowns") {
+          isEmergency = true;
+      }
+
       const dateStr = dayInfo.date.substring(0, 10);
       if (!scheduleMap[groupKey][dateStr]) scheduleMap[groupKey][dateStr] = {};
 
@@ -209,7 +212,6 @@ function transformYasnoFormat(yasnoRaw) {
       const halfHours = new Array(48).fill(1); // 1 = Світло є
 
       slots.forEach(slot => {
-        // "Definite" (2), "Possible" (2), "NotPlanned" (1)
         let status = 1;
         if (slot.type === "Definite") status = 2;
         else if (slot.type === "Possible") status = 2;
@@ -232,7 +234,9 @@ function transformYasnoFormat(yasnoRaw) {
       }
     }
   }
-  return scheduleMap;
+  
+  // Повертаємо об'єкт з графіком і статусом
+  return { schedule: scheduleMap, emergency: isEmergency };
 }
 
 // 4. ГОЛОВНИЙ ЗАПУСК
@@ -258,7 +262,7 @@ async function run() {
                 name_ru: config.name_ru,
                 name_en: config.name_en,
                 schedule: cleanSchedule,
-                emergency: rawInfo.emergency || false // <--- ЗБЕРІГАЄМО СТАТУС
+                emergency: rawInfo.emergency || false 
             });
         }
       }
@@ -282,7 +286,7 @@ async function run() {
               name_ru: "Львовская область",
               name_en: "Lviv Region",
               schedule: lvivSchedule,
-              emergency: false // Поки false для Львова
+              emergency: false 
           });
       }
   }
@@ -290,17 +294,19 @@ async function run() {
   // 3. МІСТО КИЇВ (YASNO)
   const yasnoKyivRaw = await getYasnoData(YASNO_KYIV_URL, "Kyiv");
   if (yasnoKyivRaw) {
-      const yasnoSchedule = transformYasnoFormat(yasnoKyivRaw);
-      if (Object.keys(yasnoSchedule).length > 0) {
-          console.log(`✅ Success Yasno Kyiv`);
-          updateGlobalDates(yasnoSchedule, globalDates);
+      // ⬇️ ДЕСТРУКТУРИЗАЦІЯ РЕЗУЛЬТАТУ
+      const { schedule, emergency } = transformYasnoFormat(yasnoKyivRaw);
+      
+      if (Object.keys(schedule).length > 0) {
+          console.log(`✅ Success Yasno Kyiv (Emergency: ${emergency})`);
+          updateGlobalDates(schedule, globalDates);
           processedRegions.push({
               cpu: "kyiv",
               name_ua: "Київ",
               name_ru: "Киев",
               name_en: "Kyiv",
-              schedule: yasnoSchedule,
-              emergency: false // Поки false, треба дослідити JSON Yasno
+              schedule: schedule,
+              emergency: emergency // <--- Передаємо статус
           });
       }
   }
@@ -308,9 +314,9 @@ async function run() {
   // 4. МІСТО ДНІПРО (YASNO - ДнЕМ)
   const yasnoDniproDnemRaw = await getYasnoData(YASNO_DNIPRO_DNEM_URL, "Dnipro DNEM");
   if (yasnoDniproDnemRaw) {
-      const schedule = transformYasnoFormat(yasnoDniproDnemRaw);
+      const { schedule, emergency } = transformYasnoFormat(yasnoDniproDnemRaw);
       if (Object.keys(schedule).length > 0) {
-          console.log(`✅ Success Yasno Dnipro (DNEM)`);
+          console.log(`✅ Success Yasno Dnipro DNEM (Emergency: ${emergency})`);
           updateGlobalDates(schedule, globalDates);
           processedRegions.push({
               cpu: "dnipro-dnem",
@@ -318,7 +324,7 @@ async function run() {
               name_ru: "г. Днепр (ДнЭМ)",
               name_en: "Dnipro City (DNEM)",
               schedule: schedule,
-              emergency: false
+              emergency: emergency
           });
       }
   }
@@ -326,9 +332,9 @@ async function run() {
   // 5. МІСТО ДНІПРО (YASNO - ЦЕК)
   const yasnoDniproCekRaw = await getYasnoData(YASNO_DNIPRO_CEK_URL, "Dnipro CEK");
   if (yasnoDniproCekRaw) {
-      const schedule = transformYasnoFormat(yasnoDniproCekRaw);
+      const { schedule, emergency } = transformYasnoFormat(yasnoDniproCekRaw);
       if (Object.keys(schedule).length > 0) {
-          console.log(`✅ Success Yasno Dnipro (CEK)`);
+          console.log(`✅ Success Yasno Dnipro CEK (Emergency: ${emergency})`);
           updateGlobalDates(schedule, globalDates);
           processedRegions.push({
               cpu: "dnipro-cek",
@@ -336,7 +342,7 @@ async function run() {
               name_ru: "г. Днепр (ЦЭК)",
               name_en: "Dnipro City (CEK)",
               schedule: schedule,
-              emergency: false
+              emergency: emergency
           });
       }
   }

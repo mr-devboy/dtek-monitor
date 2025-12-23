@@ -60,10 +60,24 @@ async function getDtekRegionInfo(browser, config) {
   }
 
   console.log(`🌍 Visiting DTEK ${config.url}...`);
-  
+   
   const page = await browser.newPage();
   try {
     await page.goto(config.url, { waitUntil: "load", timeout: 45000 });
+
+    // --- ПОЧАТОК ЗМІН: Перевірка на екстрені відключення ---
+    const isEmergency = await page.evaluate(() => {
+        // Шукаємо блок уваги, який ви надали у прикладі
+        const attentionBlock = document.querySelector('.m-attention__text');
+        if (!attentionBlock) return false;
+        const text = attentionBlock.innerText.toLowerCase();
+        // Шукаємо ключові слова
+        return text.includes("екстрені") || text.includes("аварійні");
+    });
+    if (isEmergency) {
+        console.log(`⚠️ DETECTED EMERGENCY for ${config.id}`);
+    }
+    // --- КІНЕЦЬ ЗМІН ---
 
     const csrfTokenTag = await page.waitForSelector('meta[name="csrf-token"]', { state: "attached" });
     const csrfToken = await csrfTokenTag.getAttribute("content");
@@ -91,7 +105,9 @@ async function getDtekRegionInfo(browser, config) {
       { city: config.city, street: config.street, house: config.house, csrfToken }
     );
     
-    return info;
+    // Повертаємо дані графіку + статус аварії
+    return { ...info, emergency: isEmergency };
+
   } catch (error) {
     console.error(`❌ Error scraping DTEK ${config.id}:`, error.message);
     return null;
@@ -120,7 +136,6 @@ async function getYasnoData(url, label) {
     const response = await fetch(url);
     if (response.status === 304) {
         console.log(`ℹ️ Yasno ${label}: 304 Not Modified (using cached is not possible here, assuming fail or retry)`);
-        // Якщо сервер Yasno вперто повертає 304, треба додати заголовки, але поки спробуємо так.
     }
     if (!response.ok && response.status !== 304) throw new Error(`HTTP ${response.status}`);
     return await response.json();
@@ -177,7 +192,7 @@ function transformToSvitloFormat(dtekRaw) {
 // Трансформація Yasno (Хвилини -> Слоти)
 function transformYasnoFormat(yasnoRaw) {
   if (!yasnoRaw) return {};
-  
+   
   const scheduleMap = {};
 
   for (const [groupKey, daysData] of Object.entries(yasnoRaw)) {
@@ -223,7 +238,7 @@ function transformYasnoFormat(yasnoRaw) {
 // 4. ГОЛОВНИЙ ЗАПУСК
 async function run() {
   console.log("🚀 Starting Multi-Region Scraper (DTEK + Lviv + Yasno[Kyiv/Dnipro])...");
-  
+   
   const browser = await chromium.launch({ headless: true });
   const processedRegions = [];
   const globalDates = { today: null, tomorrow: null };
@@ -242,7 +257,8 @@ async function run() {
                 name_ua: config.name_ua,
                 name_ru: config.name_ru,
                 name_en: config.name_en,
-                schedule: cleanSchedule
+                schedule: cleanSchedule,
+                emergency: rawInfo.emergency || false // <--- ЗБЕРІГАЄМО СТАТУС
             });
         }
       }
@@ -265,7 +281,8 @@ async function run() {
               name_ua: "Львівська область",
               name_ru: "Львовская область",
               name_en: "Lviv Region",
-              schedule: lvivSchedule
+              schedule: lvivSchedule,
+              emergency: false // Поки false для Львова
           });
       }
   }
@@ -282,7 +299,8 @@ async function run() {
               name_ua: "Київ",
               name_ru: "Киев",
               name_en: "Kyiv",
-              schedule: yasnoSchedule
+              schedule: yasnoSchedule,
+              emergency: false // Поки false, треба дослідити JSON Yasno
           });
       }
   }
@@ -299,7 +317,8 @@ async function run() {
               name_ua: "м. Дніпро (ДнЕМ)",
               name_ru: "г. Днепр (ДнЭМ)",
               name_en: "Dnipro City (DNEM)",
-              schedule: schedule
+              schedule: schedule,
+              emergency: false
           });
       }
   }
@@ -316,7 +335,8 @@ async function run() {
               name_ua: "м. Дніпро (ЦЕК)",
               name_ru: "г. Днепр (ЦЭК)",
               name_en: "Dnipro City (CEK)",
-              schedule: schedule
+              schedule: schedule,
+              emergency: false
           });
       }
   }

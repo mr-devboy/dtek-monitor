@@ -84,7 +84,6 @@ async function getDtekRegionInfo(browser, config) {
       await sleep(5000);
 
       // --- Перевірка на екстрені відключення ---
-      // Використовуємо try/catch всередині, щоб збій тут не валив весь процес
       const isEmergency = await page.evaluate(() => {
           try {
             const attentionBlock = document.querySelector('.m-attention__text');
@@ -160,7 +159,7 @@ async function getLvivData() {
 // 3. YASNO (З RETRY)
 async function getYasnoData(url, label) {
   const MAX_RETRIES = 3;
-  
+   
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
         console.log(`🌍 Fetching Yasno ${label} data (Attempt ${attempt})...`);
@@ -171,7 +170,7 @@ async function getYasnoData(url, label) {
         }
         
         if (!response.ok && response.status !== 304) {
-             throw new Error(`HTTP ${response.status}`);
+              throw new Error(`HTTP ${response.status}`);
         }
         
         return await response.json();
@@ -228,7 +227,7 @@ function transformToSvitloFormat(dtekRaw) {
 
 function transformYasnoFormat(yasnoRaw) {
   if (!yasnoRaw) return { schedule: {}, emergency: false };
-   
+    
   const scheduleMap = {};
   let isEmergency = false;
 
@@ -272,14 +271,14 @@ function transformYasnoFormat(yasnoRaw) {
       }
     }
   }
-  
+   
   return { schedule: scheduleMap, emergency: isEmergency };
 }
 
 // 4. ГОЛОВНИЙ ЗАПУСК
 async function run() {
   console.log("🚀 Starting Multi-Region Scraper (Robust Mode)...");
-   
+    
   const browser = await chromium.launch({ headless: true });
   const processedRegions = [];
   const globalDates = { today: null, tomorrow: null };
@@ -287,23 +286,35 @@ async function run() {
   // 1. ДТЕК (ОБЛАСТІ)
   try {
     for (const config of DTEK_REGIONS) {
-      // Додаємо паузу між регіонами, щоб не бомбити сайт
       await sleep(2000); 
       const rawInfo = await getDtekRegionInfo(browser, config);
       if (rawInfo) {
         const cleanSchedule = transformToSvitloFormat(rawInfo);
-        if (Object.keys(cleanSchedule).length > 0) {
-            console.log(`✅ Success DTEK: ${config.id}`);
-            updateGlobalDates(cleanSchedule, globalDates);
+        
+        // --- ⬇️ ОНОВЛЕНА ЛОГІКА ТУТ ⬇️ ---
+        const hasSchedule = Object.keys(cleanSchedule).length > 0;
+        
+        // Додаємо регіон, якщо Є графік АБО Є аварійний режим
+        if (hasSchedule || rawInfo.emergency) {
+            console.log(`✅ Success DTEK: ${config.id} (Emergency: ${rawInfo.emergency})`);
+            
+            // Оновлюємо дати тільки якщо є реальний графік
+            if (hasSchedule) {
+                updateGlobalDates(cleanSchedule, globalDates);
+            }
+
             processedRegions.push({
                 cpu: config.id,
                 name_ua: config.name_ua,
                 name_ru: config.name_ru,
                 name_en: config.name_en,
-                schedule: cleanSchedule,
+                schedule: cleanSchedule, // Може бути пустим {}, якщо emergency=true
                 emergency: rawInfo.emergency || false 
             });
+        } else {
+             console.log(`ℹ️ Skipping DTEK ${config.id}: No schedule and no emergency detected.`);
         }
+        // --- ⬆️ КІНЕЦЬ ЗМІН ⬆️ ---
       }
     }
   } catch (err) {

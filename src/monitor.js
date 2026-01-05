@@ -83,18 +83,39 @@ async function getDtekRegionInfo(browser, config) {
       // ⚠️ ВАЖЛИВО: Чекаємо 5 секунд, щоб сайт встиг зробити всі редіректи/перезавантаження
       await sleep(5000);
 
-      // --- Перевірка на екстрені відключення ---
+      // --- Перевірка на екстрені відключення (SMART GLOBAL CHECK) ---
       const isEmergency = await page.evaluate(() => {
           try {
             const attentionBlock = document.querySelector('.m-attention__text');
             if (!attentionBlock) return false;
             const text = attentionBlock.innerText.toLowerCase();
-            return text.includes("екстрені") || text.includes("аварійні");
+
+            // 1. Якщо написано "скасовано" або "відновлено" - це не аварія
+            if (text.includes("скасовано") || text.includes("відновлено") || text.includes("повертаємось до графіків")) {
+                return false;
+            }
+
+            // 2. Чи є взагалі слова про відключення?
+            const hasKeywords = text.includes("екстрені") || text.includes("аварійні");
+            if (!hasKeywords) return false;
+
+            // 3. ФІЛЬТР: Чи це ГЛОБАЛЬНА аварія?
+            // Якщо є слово "Укренерго" - це майже завжди розпорядження на всю область/країну.
+            if (text.includes("укренерго")) return true;
+
+            // Якщо згадуються локальні маркери - це ЛОКАЛЬНА аварія, ігноруємо її.
+            // (Якщо ДТЕК пише "в Бориспільському районі", "в частині громади" тощо)
+            if (text.includes("районі") || text.includes("громаді") || text.includes("частині") || text.includes("населеному пункті")) {
+                return false;
+            }
+
+            // Якщо слів-маркерів локальності немає, а слова "екстрені/аварійні" є - вважаємо глобальною.
+            return true;
           } catch (e) { return false; }
       }).catch(() => false);
 
       if (isEmergency) {
-          console.log(`⚠️ DETECTED EMERGENCY for ${config.id}`);
+          console.log(`⚠️ DETECTED GLOBAL EMERGENCY for ${config.id}`);
       }
 
       // Чекаємо на CSRF токен (ознака того, що сторінка стабільна)

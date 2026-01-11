@@ -1,6 +1,6 @@
 import { chromium } from "playwright"
 import path from "node:path"
-import { 
+import {
   CITY_KYIV, STREET_KYIV, HOUSE_KYIV,
   CITY_ODESA, STREET_ODESA, HOUSE_ODESA,
   CITY_DNIPRO, STREET_DNIPRO, HOUSE_DNIPRO,
@@ -68,15 +68,15 @@ async function getDtekRegionInfo(browser, config) {
     let page = null;
     try {
       console.log(`🌍 Visiting DTEK ${config.id} (Attempt ${attempt}/${MAX_RETRIES})...`);
-      
+
       // Створюємо контекст з реалістичним User-Agent
       const context = await browser.newContext({
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         locale: 'uk-UA'
       });
-      
+
       page = await context.newPage();
-      
+
       // Збільшуємо таймаут навігації до 60 сек
       await page.goto(config.url, { waitUntil: "domcontentloaded", timeout: 60000 });
 
@@ -85,37 +85,44 @@ async function getDtekRegionInfo(browser, config) {
 
       // --- Перевірка на екстрені відключення (SMART GLOBAL CHECK) ---
       const isEmergency = await page.evaluate(() => {
-          try {
-            const attentionBlock = document.querySelector('.m-attention__text');
-            if (!attentionBlock) return false;
-            const text = attentionBlock.innerText.toLowerCase();
+        try {
+          const attentionBlock = document.querySelector('.m-attention__text');
+          if (!attentionBlock) return false;
+          const text = attentionBlock.innerText.toLowerCase();
 
-            // 1. Якщо написано "скасовано" або "відновлено" - це не аварія
-            if (text.includes("скасовано") || text.includes("відновлено") || text.includes("повертаємось до графіків")) {
-                return false;
+          // 1. Якщо написано "скасовано" або "відновлено" - це не аварія
+          if (text.includes("скасовано") || text.includes("відновлено") || text.includes("повертаємось до графіків")) {
+            return false;
+          }
+
+          // 2. Чи є взагалі слова про відключення?
+          const hasKeywords = text.includes("екстрені") || text.includes("аварійні");
+          if (!hasKeywords) return false;
+
+          // 3. ФІЛЬТР: Чи це ГЛОБАЛЬНА аварія?
+          // Якщо є слово "Укренерго" - це майже завжди розпорядження на всю область/країну.
+          if (text.includes("укренерго")) return true;
+
+          // Якщо згадуються локальні маркери - це ЛОКАЛЬНА аварія, ігноруємо її.
+          // (Якщо ДТЕК пише "в Бориспільському районі", "в частині громади" тощо)
+          if (text.includes("районі") || text.includes("громаді") || text.includes("частині") || text.includes("населеному пункті")) {
+            // ⚠️ ВИНЯТОК: Якщо при цьому згадується саме обласний центр - це все ж таки важливо!
+            // Наприклад: "в Одеському районі, зокрема в Одесі"
+            const mentionsMajorCity = text.includes("київ") || text.includes("києв") ||
+              text.includes("одес") || text.includes("дніпр");
+
+            if (!mentionsMajorCity) {
+              return false;
             }
+          }
 
-            // 2. Чи є взагалі слова про відключення?
-            const hasKeywords = text.includes("екстрені") || text.includes("аварійні");
-            if (!hasKeywords) return false;
-
-            // 3. ФІЛЬТР: Чи це ГЛОБАЛЬНА аварія?
-            // Якщо є слово "Укренерго" - це майже завжди розпорядження на всю область/країну.
-            if (text.includes("укренерго")) return true;
-
-            // Якщо згадуються локальні маркери - це ЛОКАЛЬНА аварія, ігноруємо її.
-            // (Якщо ДТЕК пише "в Бориспільському районі", "в частині громади" тощо)
-            if (text.includes("районі") || text.includes("громаді") || text.includes("частині") || text.includes("населеному пункті")) {
-                return false;
-            }
-
-            // Якщо слів-маркерів локальності немає, а слова "екстрені/аварійні" є - вважаємо глобальною.
-            return true;
-          } catch (e) { return false; }
+          // Якщо слів-маркерів локальності немає, а слова "екстрені/аварійні" є - вважаємо глобальною.
+          return true;
+        } catch (e) { return false; }
       }).catch(() => false);
 
       if (isEmergency) {
-          console.log(`⚠️ DETECTED GLOBAL EMERGENCY for ${config.id}`);
+        console.log(`⚠️ DETECTED GLOBAL EMERGENCY for ${config.id}`);
       }
 
       // Чекаємо на CSRF токен (ознака того, що сторінка стабільна)
@@ -131,7 +138,7 @@ async function getDtekRegionInfo(browser, config) {
           formData.append("data[0][value]", city);
           formData.append("data[1][name]", "street");
           formData.append("data[1][value]", street);
-          formData.append("data[2][name]", "house"); 
+          formData.append("data[2][name]", "house");
           formData.append("data[2][value]", house);
           formData.append("data[3][name]", "updateFact");
           formData.append("data[3][value]", new Date().toLocaleString("uk-UA"));
@@ -145,18 +152,18 @@ async function getDtekRegionInfo(browser, config) {
         },
         { city: config.city, street: config.street, house: config.house, csrfToken }
       );
-      
+
       await context.close(); // Закриваємо контекст чисто
       return { ...info, emergency: isEmergency };
 
     } catch (error) {
       console.warn(`⚠️ Error scraping DTEK ${config.id}: ${error.message}`);
-      
-      if (page) await page.close().catch(() => {});
-      
+
+      if (page) await page.close().catch(() => { });
+
       if (attempt === MAX_RETRIES) {
-          console.error(`❌ Failed DTEK ${config.id} giving up.`);
-          return null;
+        console.error(`❌ Failed DTEK ${config.id} giving up.`);
+        return null;
       }
       // Чекаємо довше перед наступною спробою
       await sleep(5000 + (attempt * 2000));
@@ -180,26 +187,26 @@ async function getLvivData() {
 // 3. YASNO (З RETRY)
 async function getYasnoData(url, label) {
   const MAX_RETRIES = 3;
-   
+
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        console.log(`🌍 Fetching Yasno ${label} data (Attempt ${attempt})...`);
-        const response = await fetch(url);
-        
-        if (response.status === 304) {
-            console.log(`ℹ️ Yasno ${label}: 304 Not Modified`);
-        }
-        
-        if (!response.ok && response.status !== 304) {
-              throw new Error(`HTTP ${response.status}`);
-        }
-        
-        return await response.json();
-      } catch (e) {
-        console.warn(`⚠️ Error fetching Yasno ${label}: ${e.message}`);
-        if (attempt === MAX_RETRIES) return null;
-        await sleep(3000);
+    try {
+      console.log(`🌍 Fetching Yasno ${label} data (Attempt ${attempt})...`);
+      const response = await fetch(url);
+
+      if (response.status === 304) {
+        console.log(`ℹ️ Yasno ${label}: 304 Not Modified`);
       }
+
+      if (!response.ok && response.status !== 304) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (e) {
+      console.warn(`⚠️ Error fetching Yasno ${label}: ${e.message}`);
+      if (attempt === MAX_RETRIES) return null;
+      await sleep(3000);
+    }
   }
 }
 
@@ -208,7 +215,7 @@ async function getYasnoData(url, label) {
 function transformToSvitloFormat(dtekRaw) {
   let daysData = null;
   if (dtekRaw?.data?.fact?.data) daysData = dtekRaw.data.fact.data;
-  else if (dtekRaw?.fact?.data) daysData = dtekRaw.fact.data; 
+  else if (dtekRaw?.fact?.data) daysData = dtekRaw.fact.data;
   else if (dtekRaw?.data) daysData = dtekRaw.data;
 
   if (!daysData) return {};
@@ -220,7 +227,7 @@ function transformToSvitloFormat(dtekRaw) {
     const dateStr = dateObj.toLocaleDateString("en-CA", { timeZone: "Europe/Kyiv" });
 
     for (const [gpvKey, hours] of Object.entries(queues)) {
-      const groupKey = gpvKey.replace("GPV", ""); 
+      const groupKey = gpvKey.replace("GPV", "");
 
       if (!scheduleMap[groupKey]) scheduleMap[groupKey] = {};
       if (!scheduleMap[groupKey][dateStr]) scheduleMap[groupKey][dateStr] = {};
@@ -229,7 +236,7 @@ function transformToSvitloFormat(dtekRaw) {
         const status = hours[h.toString()];
         const hourIndex = h - 1;
         const hh = String(hourIndex).padStart(2, "0");
-        
+
         let val00 = 1, val30 = 1;
         switch (status) {
           case "yes": val00 = 1; val30 = 1; break;
@@ -248,7 +255,7 @@ function transformToSvitloFormat(dtekRaw) {
 
 function transformYasnoFormat(yasnoRaw) {
   if (!yasnoRaw) return { schedule: {}, emergency: false };
-    
+
   const scheduleMap = {};
   let isEmergency = false;
 
@@ -260,7 +267,7 @@ function transformYasnoFormat(yasnoRaw) {
       if (!dayInfo || !dayInfo.date) continue;
 
       if (dayInfo.status === "EmergencyShutdowns") {
-          isEmergency = true;
+        isEmergency = true;
       }
 
       const dateStr = dayInfo.date.substring(0, 10);
@@ -292,14 +299,14 @@ function transformYasnoFormat(yasnoRaw) {
       }
     }
   }
-   
+
   return { schedule: scheduleMap, emergency: isEmergency };
 }
 
 // 4. ГОЛОВНИЙ ЗАПУСК
 async function run() {
   console.log("🚀 Starting Multi-Region Scraper (Robust Mode)...");
-    
+
   const browser = await chromium.launch({ headless: true });
   const processedRegions = [];
   const globalDates = { today: null, tomorrow: null };
@@ -307,33 +314,33 @@ async function run() {
   // 1. ДТЕК (ОБЛАСТІ)
   try {
     for (const config of DTEK_REGIONS) {
-      await sleep(2000); 
+      await sleep(2000);
       const rawInfo = await getDtekRegionInfo(browser, config);
       if (rawInfo) {
         const cleanSchedule = transformToSvitloFormat(rawInfo);
-        
+
         // --- ⬇️ ОНОВЛЕНА ЛОГІКА ТУТ ⬇️ ---
         const hasSchedule = Object.keys(cleanSchedule).length > 0;
-        
+
         // Додаємо регіон, якщо Є графік АБО Є аварійний режим
         if (hasSchedule || rawInfo.emergency) {
-            console.log(`✅ Success DTEK: ${config.id} (Emergency: ${rawInfo.emergency})`);
-            
-            // Оновлюємо дати тільки якщо є реальний графік
-            if (hasSchedule) {
-                updateGlobalDates(cleanSchedule, globalDates);
-            }
+          console.log(`✅ Success DTEK: ${config.id} (Emergency: ${rawInfo.emergency})`);
 
-            processedRegions.push({
-                cpu: config.id,
-                name_ua: config.name_ua,
-                name_ru: config.name_ru,
-                name_en: config.name_en,
-                schedule: cleanSchedule, // Може бути пустим {}, якщо emergency=true
-                emergency: rawInfo.emergency || false 
-            });
+          // Оновлюємо дати тільки якщо є реальний графік
+          if (hasSchedule) {
+            updateGlobalDates(cleanSchedule, globalDates);
+          }
+
+          processedRegions.push({
+            cpu: config.id,
+            name_ua: config.name_ua,
+            name_ru: config.name_ru,
+            name_en: config.name_en,
+            schedule: cleanSchedule, // Може бути пустим {}, якщо emergency=true
+            emergency: rawInfo.emergency || false
+          });
         } else {
-             console.log(`ℹ️ Skipping DTEK ${config.id}: No schedule and no emergency detected.`);
+          console.log(`ℹ️ Skipping DTEK ${config.id}: No schedule and no emergency detected.`);
         }
         // --- ⬆️ КІНЕЦЬ ЗМІН ⬆️ ---
       }
@@ -347,73 +354,73 @@ async function run() {
   // 2. ЛЬВІВ
   const lvivRaw = await getLvivData();
   if (lvivRaw) {
-      const lvivSchedule = transformToSvitloFormat(lvivRaw);
-      if (Object.keys(lvivSchedule).length > 0) {
-          console.log(`✅ Success Lviv`);
-          updateGlobalDates(lvivSchedule, globalDates);
-          processedRegions.push({
-              cpu: "lvivska-oblast",
-              name_ua: "Львівська область",
-              name_ru: "Львовская область",
-              name_en: "Lviv Region",
-              schedule: lvivSchedule,
-              emergency: false 
-          });
-      }
+    const lvivSchedule = transformToSvitloFormat(lvivRaw);
+    if (Object.keys(lvivSchedule).length > 0) {
+      console.log(`✅ Success Lviv`);
+      updateGlobalDates(lvivSchedule, globalDates);
+      processedRegions.push({
+        cpu: "lvivska-oblast",
+        name_ua: "Львівська область",
+        name_ru: "Львовская область",
+        name_en: "Lviv Region",
+        schedule: lvivSchedule,
+        emergency: false
+      });
+    }
   }
 
   // 3. YASNO KYIV
   const yasnoKyivRaw = await getYasnoData(YASNO_KYIV_URL, "Kyiv");
   if (yasnoKyivRaw) {
-      const { schedule, emergency } = transformYasnoFormat(yasnoKyivRaw);
-      if (Object.keys(schedule).length > 0) {
-          console.log(`✅ Success Yasno Kyiv (Emergency: ${emergency})`);
-          updateGlobalDates(schedule, globalDates);
-          processedRegions.push({
-              cpu: "kyiv",
-              name_ua: "Київ",
-              name_ru: "Киев",
-              name_en: "Kyiv",
-              schedule: schedule,
-              emergency: emergency 
-          });
-      }
+    const { schedule, emergency } = transformYasnoFormat(yasnoKyivRaw);
+    if (Object.keys(schedule).length > 0) {
+      console.log(`✅ Success Yasno Kyiv (Emergency: ${emergency})`);
+      updateGlobalDates(schedule, globalDates);
+      processedRegions.push({
+        cpu: "kyiv",
+        name_ua: "Київ",
+        name_ru: "Киев",
+        name_en: "Kyiv",
+        schedule: schedule,
+        emergency: emergency
+      });
+    }
   }
 
   // 4. YASNO DNIPRO (DNEM)
   const yasnoDniproDnemRaw = await getYasnoData(YASNO_DNIPRO_DNEM_URL, "Dnipro DNEM");
   if (yasnoDniproDnemRaw) {
-      const { schedule, emergency } = transformYasnoFormat(yasnoDniproDnemRaw);
-      if (Object.keys(schedule).length > 0) {
-          console.log(`✅ Success Yasno Dnipro DNEM (Emergency: ${emergency})`);
-          updateGlobalDates(schedule, globalDates);
-          processedRegions.push({
-              cpu: "dnipro-dnem",
-              name_ua: "м. Дніпро (ДнЕМ)",
-              name_ru: "г. Днепр (ДнЭМ)",
-              name_en: "Dnipro City (DNEM)",
-              schedule: schedule,
-              emergency: emergency
-          });
-      }
+    const { schedule, emergency } = transformYasnoFormat(yasnoDniproDnemRaw);
+    if (Object.keys(schedule).length > 0) {
+      console.log(`✅ Success Yasno Dnipro DNEM (Emergency: ${emergency})`);
+      updateGlobalDates(schedule, globalDates);
+      processedRegions.push({
+        cpu: "dnipro-dnem",
+        name_ua: "м. Дніпро (ДнЕМ)",
+        name_ru: "г. Днепр (ДнЭМ)",
+        name_en: "Dnipro City (DNEM)",
+        schedule: schedule,
+        emergency: emergency
+      });
+    }
   }
 
   // 5. YASNO DNIPRO (CEK)
   const yasnoDniproCekRaw = await getYasnoData(YASNO_DNIPRO_CEK_URL, "Dnipro CEK");
   if (yasnoDniproCekRaw) {
-      const { schedule, emergency } = transformYasnoFormat(yasnoDniproCekRaw);
-      if (Object.keys(schedule).length > 0) {
-          console.log(`✅ Success Yasno Dnipro CEK (Emergency: ${emergency})`);
-          updateGlobalDates(schedule, globalDates);
-          processedRegions.push({
-              cpu: "dnipro-cek",
-              name_ua: "м. Дніпро (ЦЕК)",
-              name_ru: "г. Днепр (ЦЭК)",
-              name_en: "Dnipro City (CEK)",
-              schedule: schedule,
-              emergency: emergency
-          });
-      }
+    const { schedule, emergency } = transformYasnoFormat(yasnoDniproCekRaw);
+    if (Object.keys(schedule).length > 0) {
+      console.log(`✅ Success Yasno Dnipro CEK (Emergency: ${emergency})`);
+      updateGlobalDates(schedule, globalDates);
+      processedRegions.push({
+        cpu: "dnipro-cek",
+        name_ua: "м. Дніпро (ЦЕК)",
+        name_ru: "г. Днепр (ЦЭК)",
+        name_en: "Dnipro City (CEK)",
+        schedule: schedule,
+        emergency: emergency
+      });
+    }
   }
 
   // ВІДПРАВКА
@@ -435,36 +442,36 @@ async function run() {
   };
 
   if (!CF_WORKER_URL || !CF_WORKER_TOKEN) {
-      console.error("❌ Missing Cloudflare secrets!");
-      process.exit(1);
+    console.error("❌ Missing Cloudflare secrets!");
+    process.exit(1);
   }
 
   console.log(`📤 Sending ${processedRegions.length} regions to Cloudflare...`);
   try {
-      const response = await fetch(CF_WORKER_URL, {
-          method: "POST",
-          headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${CF_WORKER_TOKEN}`
-          },
-          body: JSON.stringify(finalOutput)
-      });
-      if (!response.ok) throw new Error(await response.text());
-      console.log(`✅ Success!`);
+    const response = await fetch(CF_WORKER_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${CF_WORKER_TOKEN}`
+      },
+      body: JSON.stringify(finalOutput)
+    });
+    if (!response.ok) throw new Error(await response.text());
+    console.log(`✅ Success!`);
   } catch (err) {
-      console.error("❌ Send Error:", err.message);
-      process.exit(1);
+    console.error("❌ Send Error:", err.message);
+    process.exit(1);
   }
 }
 
 function updateGlobalDates(schedule, globalDates) {
-    if (!globalDates.today) {
-        const dates = new Set();
-        Object.values(schedule).forEach(g => Object.keys(g).forEach(d => dates.add(d)));
-        const sorted = Array.from(dates).sort();
-        globalDates.today = sorted[0];
-        globalDates.tomorrow = sorted[1];
-    }
+  if (!globalDates.today) {
+    const dates = new Set();
+    Object.values(schedule).forEach(g => Object.keys(g).forEach(d => dates.add(d)));
+    const sorted = Array.from(dates).sort();
+    globalDates.today = sorted[0];
+    globalDates.tomorrow = sorted[1];
+  }
 }
 
 run();

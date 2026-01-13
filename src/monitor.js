@@ -6,6 +6,7 @@ import {
   CITY_DNIPRO, STREET_DNIPRO, HOUSE_DNIPRO,
   CF_WORKER_URL, CF_WORKER_TOKEN,
   LVIV_JSON_URL,
+  POLTAVA_JSON_URL,
   YASNO_KYIV_URL,
   YASNO_DNIPRO_DNEM_URL,
   YASNO_DNIPRO_CEK_URL
@@ -184,7 +185,20 @@ async function getLvivData() {
   }
 }
 
-// 3. YASNO (З RETRY)
+// 3. ПОЛТАВА (GitHub JSON)
+async function getPoltavaData() {
+  console.log(`🌍 Fetching Poltava data...`);
+  try {
+    const response = await fetch(POLTAVA_JSON_URL);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return await response.json();
+  } catch (e) {
+    console.error("❌ Error fetching Poltava data:", e.message);
+    return null;
+  }
+}
+
+// 4. YASNO (З RETRY)
 async function getYasnoData(url, label) {
   const MAX_RETRIES = 3;
 
@@ -369,7 +383,25 @@ async function run() {
     }
   }
 
-  // 3. YASNO KYIV
+  // 3. ПОЛТАВА
+  const poltavaRaw = await getPoltavaData();
+  if (poltavaRaw) {
+    const poltavaSchedule = transformToSvitloFormat(poltavaRaw);
+    if (Object.keys(poltavaSchedule).length > 0) {
+      console.log(`✅ Success Poltava`);
+      updateGlobalDates(poltavaSchedule, globalDates);
+      processedRegions.push({
+        cpu: "poltavska-oblast",
+        name_ua: "Полтавська",
+        name_ru: "Полтавская",
+        name_en: "Poltava",
+        schedule: poltavaSchedule,
+        emergency: false
+      });
+    }
+  }
+
+  // 4. YASNO KYIV
   const yasnoKyivRaw = await getYasnoData(YASNO_KYIV_URL, "Kyiv");
   if (yasnoKyivRaw) {
     const { schedule, emergency } = transformYasnoFormat(yasnoKyivRaw);
@@ -387,7 +419,7 @@ async function run() {
     }
   }
 
-  // 4. YASNO DNIPRO (DNEM)
+  // 5. YASNO DNIPRO (DNEM)
   const yasnoDniproDnemRaw = await getYasnoData(YASNO_DNIPRO_DNEM_URL, "Dnipro DNEM");
   if (yasnoDniproDnemRaw) {
     const { schedule, emergency } = transformYasnoFormat(yasnoDniproDnemRaw);
@@ -405,7 +437,7 @@ async function run() {
     }
   }
 
-  // 5. YASNO DNIPRO (CEK)
+  // 6. YASNO DNIPRO (CEK)
   const yasnoDniproCekRaw = await getYasnoData(YASNO_DNIPRO_CEK_URL, "Dnipro CEK");
   if (yasnoDniproCekRaw) {
     const { schedule, emergency } = transformYasnoFormat(yasnoDniproCekRaw);

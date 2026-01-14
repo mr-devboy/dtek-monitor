@@ -7,6 +7,16 @@ import {
   CF_WORKER_URL, CF_WORKER_TOKEN,
   LVIV_JSON_URL,
   POLTAVA_JSON_URL,
+  CHERKASY_JSON_URL,
+  CHERNIHIV_JSON_URL,
+  KHARKIV_JSON_URL,
+  KHMELNYTSKYI_JSON_URL,
+  IVANO_FRANKIVSK_JSON_URL,
+  RIVNE_JSON_URL,
+  TERNOPIL_JSON_URL,
+  ZAKARPATTIA_JSON_URL,
+  ZAPORIZHZHIA_JSON_URL,
+  ZHYTOMYR_JSON_URL,
   YASNO_KYIV_URL,
   YASNO_DNIPRO_DNEM_URL,
   YASNO_DNIPRO_CEK_URL
@@ -169,32 +179,6 @@ async function getDtekRegionInfo(browser, config) {
       // Чекаємо довше перед наступною спробою
       await sleep(5000 + (attempt * 2000));
     }
-  }
-}
-
-// 2. ЛЬВІВ (GitHub JSON)
-async function getLvivData() {
-  console.log(`🌍 Fetching Lviv data...`);
-  try {
-    const response = await fetch(LVIV_JSON_URL);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    return await response.json();
-  } catch (e) {
-    console.error("❌ Error fetching Lviv data:", e.message);
-    return null;
-  }
-}
-
-// 3. ПОЛТАВА (GitHub JSON)
-async function getPoltavaData() {
-  console.log(`🌍 Fetching Poltava data...`);
-  try {
-    const response = await fetch(POLTAVA_JSON_URL);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    return await response.json();
-  } catch (e) {
-    console.error("❌ Error fetching Poltava data:", e.message);
-    return null;
   }
 }
 
@@ -365,43 +349,125 @@ async function run() {
     await browser.close();
   }
 
-  // 2. ЛЬВІВ
-  const lvivRaw = await getLvivData();
-  if (lvivRaw) {
-    const lvivSchedule = transformToSvitloFormat(lvivRaw);
-    if (Object.keys(lvivSchedule).length > 0) {
-      console.log(`✅ Success Lviv`);
-      updateGlobalDates(lvivSchedule, globalDates);
-      processedRegions.push({
-        cpu: "lvivska-oblast",
-        name_ua: "Львівська область",
-        name_ru: "Львовская область",
-        name_en: "Lviv Region",
-        schedule: lvivSchedule,
-        emergency: false
-      });
+  // 2. РЕГІОНИ З GITHUB (GENERIC)
+  const GITHUB_REGIONS = [
+    {
+      id: "lvivska-oblast",
+      url: LVIV_JSON_URL,
+      name_ua: "Львівська область",
+      name_ru: "Львовская область",
+      name_en: "Lviv Region"
+    },
+    {
+      id: "poltavska-oblast",
+      url: POLTAVA_JSON_URL,
+      name_ua: "Полтавська",
+      name_ru: "Полтавская",
+      name_en: "Poltava"
+    },
+    {
+      id: "cherkaska-oblast",
+      url: CHERKASY_JSON_URL,
+      name_ua: "Черкаська область",
+      name_ru: "Черкасская область",
+      name_en: "Cherkasy Region"
+    },
+    {
+      id: "chernihivska-oblast",
+      url: CHERNIHIV_JSON_URL,
+      name_ua: "Чернігівська область",
+      name_ru: "Черниговская область",
+      name_en: "Chernihiv Region"
+    },
+    {
+      id: "kharkivska-oblast",
+      url: KHARKIV_JSON_URL,
+      name_ua: "Харківська область",
+      name_ru: "Харьковская область",
+      name_en: "Kharkiv Region"
+    },
+    {
+      id: "khmelnytska-oblast",
+      url: KHMELNYTSKYI_JSON_URL,
+      name_ua: "Хмельницька область",
+      name_ru: "Хмельницкая область",
+      name_en: "Khmelnytskyi Region"
+    },
+    {
+      id: "ivano-frankivska-oblast",
+      url: IVANO_FRANKIVSK_JSON_URL,
+      name_ua: "Івано-Франківська область",
+      name_ru: "Ивано-Франковская область",
+      name_en: "Ivano-Frankivsk Region"
+    },
+    {
+      id: "rivnenska-oblast",
+      url: RIVNE_JSON_URL,
+      name_ua: "Рівненська область",
+      name_ru: "Ровненская область",
+      name_en: "Rivne Region"
+    },
+    {
+      id: "ternopilska-oblast",
+      url: TERNOPIL_JSON_URL,
+      name_ua: "Тернопільська область",
+      name_ru: "Тернопольская область",
+      name_en: "Ternopil Region"
+    },
+    {
+      id: "zakarpatska-oblast",
+      url: ZAKARPATTIA_JSON_URL,
+      name_ua: "Закарпатська область",
+      name_ru: "Закарпатская область",
+      name_en: "Zakarpattia Region"
+    },
+    {
+      id: "zaporizka-oblast",
+      url: ZAPORIZHZHIA_JSON_URL,
+      name_ua: "Запорізька область",
+      name_ru: "Запорожская область",
+      name_en: "Zaporizhzhia Region"
+    },
+    {
+      id: "zhytomyrska-oblast",
+      url: ZHYTOMYR_JSON_URL,
+      name_ua: "Житомирська область",
+      name_ru: "Житомирская область",
+      name_en: "Zhytomyr Region"
+    }
+  ];
+
+  for (const region of GITHUB_REGIONS) {
+    console.log(`🌍 Fetching ${region.name_en}...`);
+    try {
+      const response = await fetch(region.url);
+      if (!response.ok) {
+        console.warn(`⚠️ Failed to fetch ${region.name_en}: ${response.status}`);
+        continue;
+      }
+      const rawData = await response.json();
+      const schedule = transformToSvitloFormat(rawData);
+
+      if (Object.keys(schedule).length > 0) {
+        console.log(`✅ Success ${region.name_en}`);
+        updateGlobalDates(schedule, globalDates);
+        processedRegions.push({
+          cpu: region.id,
+          name_ua: region.name_ua,
+          name_ru: region.name_ru,
+          name_en: region.name_en,
+          schedule: schedule,
+          emergency: false
+        });
+      } else {
+        console.log(`ℹ️ Empty schedule for ${region.name_en}`);
+      }
+    } catch (e) {
+      console.error(`❌ Error processing ${region.name_en}: ${e.message}`);
     }
   }
 
-  // 3. ПОЛТАВА
-  const poltavaRaw = await getPoltavaData();
-  if (poltavaRaw) {
-    const poltavaSchedule = transformToSvitloFormat(poltavaRaw);
-    if (Object.keys(poltavaSchedule).length > 0) {
-      console.log(`✅ Success Poltava`);
-      updateGlobalDates(poltavaSchedule, globalDates);
-      processedRegions.push({
-        cpu: "poltavska-oblast",
-        name_ua: "Полтавська",
-        name_ru: "Полтавская",
-        name_en: "Poltava",
-        schedule: poltavaSchedule,
-        emergency: false
-      });
-    }
-  }
-
-  // 4. YASNO KYIV
+  // 3. YASNO KYIV
   const yasnoKyivRaw = await getYasnoData(YASNO_KYIV_URL, "Kyiv");
   if (yasnoKyivRaw) {
     const { schedule, emergency } = transformYasnoFormat(yasnoKyivRaw);

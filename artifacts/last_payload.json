@@ -1,13 +1,12 @@
 {
-  "status": 400,
-  "ok": false,
+  "status": 200,
+  "ok": true,
   "sent": {
     "city": "Київ",
-    "street": "Здановської Юлії",
-    "homeNum": "46/1"
+    "street": "вул. Здановської Юлії"
   },
   "payload": {
-    "_nonJson": true,
-    "text": "Bad Request (#400): Не вдалося перевірити передані дані."
+    "result": false,
+    "text": "Error"
   }
 }

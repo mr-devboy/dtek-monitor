@@ -21,27 +21,40 @@ async function getInfo() {
   console.log("🌀 Getting info...")
 
   const browser = await chromium.launch({ headless: true })
-  const browserPage = await browser.newPage()
+  const page = await browser.newPage()
 
   try {
-    await browserPage.goto(SHUTDOWNS_PAGE, { waitUntil: "load" })
+    await page.goto(SHUTDOWNS_PAGE, { waitUntil: "load" })
 
-    const csrfTokenTag = await browserPage.waitForSelector(
-      'meta[name="csrf-token"]',
-      { state: "attached" }
-    )
+    const csrfTokenTag = await page.waitForSelector('meta[name="csrf-token"]', {
+      state: "attached",
+    })
     const csrfToken = await csrfTokenTag.getAttribute("content")
 
-    const info = await browserPage.evaluate(
-      async ({ CITY, STREET, csrfToken }) => {
+    const wrapped = await page.evaluate(
+      async ({ CITY, STREET, HOUSE, csrfToken }) => {
         const formData = new URLSearchParams()
         formData.append("method", "getHomeNum")
+
         formData.append("data[0][name]", "city")
         formData.append("data[0][value]", CITY)
+
         formData.append("data[1][name]", "street")
         formData.append("data[1][value]", STREET)
-        formData.append("data[2][name]", "updateFact")
-        formData.append("data[2][value]", new Date().toLocaleString("uk-UA"))
+
+        // ⚠️ Часто без дома сервер возвращает {"result":false,"text":"Error"}
+        // Отправляем несколько вариантов имени поля — сервер лишнее проигнорирует.
+        formData.append("data[2][name]", "house")
+        formData.append("data[2][value]", HOUSE)
+
+        formData.append("data[3][name]", "home")
+        formData.append("data[3][value]", HOUSE)
+
+        formData.append("data[4][name]", "home_num")
+        formData.append("data[4][value]", HOUSE)
+
+        formData.append("data[5][name]", "updateFact")
+        formData.append("data[5][value]", new Date().toLocaleString("uk-UA"))
 
         const response = await fetch("/ua/ajax", {
           method: "POST",
@@ -52,15 +65,32 @@ async function getInfo() {
           body: formData,
         })
 
-        return await response.json()
+        const raw = await response.text()
+        let json
+        try {
+          json = JSON.parse(raw)
+        } catch {
+          json = { parseError: true, raw: raw.slice(0, 500) }
+        }
+
+        return {
+          status: response.status,
+          ok: response.ok,
+          json,
+        }
       },
-      { CITY, STREET, csrfToken }
+      { CITY, STREET, HOUSE, csrfToken }
     )
-    console.log("DEBUG info keys:", Object.keys(info || {}))
-    console.log("DEBUG info:", JSON.stringify(info).slice(0, 2000))
-    
+
+    console.log("DEBUG response status:", wrapped?.status, "ok:", wrapped?.ok)
+    console.log(
+      "DEBUG payload keys:",
+      Object.keys(wrapped?.json || {}).slice(0, 50)
+    )
+    console.log("DEBUG payload:", JSON.stringify(wrapped?.json).slice(0, 2000))
+
     console.log("✅ Getting info finished.")
-    return info
+    return wrapped?.json
   } catch (error) {
     throw Error(`❌ Getting info failed: ${error.message}`)
   } finally {
@@ -72,13 +102,18 @@ function checkIsOutage(info) {
   console.log("🌀 Checking power outage...")
 
   if (!info?.data) {
-    console.log("⚠️ No data from DTEK (address not found / format changed / temporary issue).")
+    console.log(
+      "⚠️ No data from DTEK (address not found / format changed / temporary issue)."
+    )
     return false
   }
 
   const { sub_type, start_date, end_date, type } = info?.data?.[HOUSE] || {}
   const isOutageDetected =
-    sub_type !== "" || start_date !== "" || end_date !== "" || type !== ""
+    (sub_type ?? "") !== "" ||
+    (start_date ?? "") !== "" ||
+    (end_date ?? "") !== "" ||
+    (type ?? "") !== ""
 
   isOutageDetected
     ? console.log("🚨 Power outage detected!")
@@ -91,7 +126,9 @@ function checkIsScheduled(info) {
   console.log("🌀 Checking whether power outage scheduled...")
 
   if (!info?.data) {
-    console.log("⚠️ No data from DTEK (address not found / format changed / temporary issue).")
+    console.log(
+      "⚠️ No data from DTEK (address not found / format changed / temporary issue)."
+    )
     return false
   }
 
@@ -163,7 +200,7 @@ async function sendNotification(message) {
 }
 
 async function run() {
-  // ✅ Принудительный тест Telegram на каждом запуске (потом можно убрать)
+  // На всякий случай: тест можно включить один раз при отладке
   // await sendNotification("✅ TEST: runner + telegram работают")
 
   const info = await getInfo()

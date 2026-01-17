@@ -17,6 +17,13 @@ import {
   saveLastMessage,
 } from "./helpers.js"
 
+async function main() {
+  await sendTelegram("✅ TEST: runner + telegram работают");
+
+  console.log("🌀 Getting info...");
+  ...
+}
+
 async function getInfo() {
   console.log("🌀 Getting info...")
 

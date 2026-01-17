@@ -160,7 +160,7 @@ async function sendNotification(message) {
 
 async function run() {
   // ✅ Принудительный тест Telegram на каждом запуске (потом можно убрать)
-  await sendNotification("✅ TEST: runner + telegram работают")
+  // await sendNotification("✅ TEST: runner + telegram работают")
 
   const info = await getInfo()
   const isOutage = checkIsOutage(info)

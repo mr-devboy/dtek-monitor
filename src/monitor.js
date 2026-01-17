@@ -41,7 +41,10 @@ async function getInfo() {
   const page = await browser.newPage();
 
   try {
-    await page.goto(SHUTDOWNS_PAGE, { waitUntil: "load" });
+    await page.goto(SHUTDOWNS_PAGE, { waitUntil: "networkidle", timeout: 30000 });
+
+    // Дождемся стабилизации страницы
+    await page.waitForTimeout(2000);
 
     // На всякий случай сохраним HTML страницы
     const html = await page.content();

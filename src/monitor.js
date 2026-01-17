@@ -56,7 +56,9 @@ async function getInfo() {
       },
       { CITY, STREET, csrfToken }
     )
-
+    console.log("DEBUG info keys:", Object.keys(info || {}))
+    console.log("DEBUG info:", JSON.stringify(info).slice(0, 2000))
+    
     console.log("✅ Getting info finished.")
     return info
   } catch (error) {
@@ -70,7 +72,8 @@ function checkIsOutage(info) {
   console.log("🌀 Checking power outage...")
 
   if (!info?.data) {
-    throw Error("❌ Power outage info missed.")
+    console.log("⚠️ No data from DTEK (address not found / format changed / temporary issue).")
+    return false
   }
 
   const { sub_type, start_date, end_date, type } = info?.data?.[HOUSE] || {}
@@ -88,7 +91,8 @@ function checkIsScheduled(info) {
   console.log("🌀 Checking whether power outage scheduled...")
 
   if (!info?.data) {
-    throw Error("❌ Power outage info missed.")
+    console.log("⚠️ No data from DTEK (address not found / format changed / temporary issue).")
+    return false
   }
 
   const { sub_type } = info?.data?.[HOUSE] || {}

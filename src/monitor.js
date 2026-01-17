@@ -56,10 +56,9 @@ async function getInfo() {
     console.log("DEBUG csrfToken length:", (csrfToken || "").length);
 
     const result = await page.evaluate(
-      async ({ CITY, STREET, HOUSE, csrfToken }) => {
+      async ({ CITY, STREET, csrfToken }) => {
         const formData = new URLSearchParams();
 
-        // ВАЖНО: многие такие бэкенды ожидают именно эти поля + дом.
         formData.append("method", "getHomeNum");
 
         formData.append("data[0][name]", "city");
@@ -68,13 +67,8 @@ async function getInfo() {
         formData.append("data[1][name]", "street");
         formData.append("data[1][value]", STREET);
 
-        // ✅ Добавляем дом (часто без этого сервер отвечает {"result":false,"text":"Error"})
-        formData.append("data[2][name]", "homeNum");
-        formData.append("data[2][value]", HOUSE);
-
-        // updateFact — оставим, но в более нейтральном формате
-        formData.append("data[3][name]", "updateFact");
-        formData.append("data[3][value]", new Date().toISOString());
+        formData.append("data[2][name]", "updateFact");
+        formData.append("data[2][value]", new Date().toLocaleString("uk-UA"));
 
         const url = new URL("/ua/ajax", window.location.origin).toString();
 
@@ -83,11 +77,8 @@ async function getInfo() {
           headers: {
             "x-requested-with": "XMLHttpRequest",
             "x-csrf-token": csrfToken,
-            "X-CSRF-TOKEN": csrfToken,
-            "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
           },
           body: formData,
-          credentials: "same-origin",
         });
 
         let text = "";
@@ -108,12 +99,11 @@ async function getInfo() {
           sent: {
             city: CITY,
             street: STREET,
-            homeNum: HOUSE,
           },
           payload,
         };
       },
-      { CITY, STREET, HOUSE, csrfToken }
+      { CITY, STREET, csrfToken }
     );
 
     console.log("DEBUG response status:", result.status, "ok:", result.ok);

@@ -82,9 +82,7 @@ async function getInfo() {
           method: "POST",
           headers: {
             "x-requested-with": "XMLHttpRequest",
-            // иногда нужно оба варианта
             "x-csrf-token": csrfToken,
-            "x-csrf-token".toUpperCase(): csrfToken,
             "X-CSRF-TOKEN": csrfToken,
             "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
           },

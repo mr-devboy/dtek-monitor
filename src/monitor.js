@@ -17,13 +17,6 @@ import {
   saveLastMessage,
 } from "./helpers.js"
 
-async function main() {
-  await sendTelegram("✅ TEST: runner + telegram работают");
-
-  console.log("🌀 Getting info...");
-  ...
-}
-
 async function getInfo() {
   console.log("🌀 Getting info...")
 
@@ -31,9 +24,7 @@ async function getInfo() {
   const browserPage = await browser.newPage()
 
   try {
-    await browserPage.goto(SHUTDOWNS_PAGE, {
-      waitUntil: "load",
-    })
+    await browserPage.goto(SHUTDOWNS_PAGE, { waitUntil: "load" })
 
     const csrfTokenTag = await browserPage.waitForSelector(
       'meta[name="csrf-token"]',
@@ -60,6 +51,7 @@ async function getInfo() {
           },
           body: formData,
         })
+
         return await response.json()
       },
       { CITY, STREET, csrfToken }
@@ -100,7 +92,7 @@ function checkIsScheduled(info) {
   }
 
   const { sub_type } = info?.data?.[HOUSE] || {}
-  const isScheduled = sub_type.toLowerCase().includes("графік")
+  const isScheduled = (sub_type || "").toLowerCase().includes("графік")
 
   isScheduled
     ? console.log("🗓️ Power outage scheduled!")
@@ -115,34 +107,34 @@ function generateMessage(info) {
   const { sub_type, start_date, end_date } = info?.data?.[HOUSE] || {}
   const { updateTimestamp } = info || {}
 
-  const reason = capitalize(sub_type)
-  const begin = start_date.split(" ")[0]
-  const end = end_date.split(" ")[0]
+  const reason = capitalize(sub_type || "")
+  const begin = (start_date || "").split(" ")[0]
+  const end = (end_date || "").split(" ")[0]
 
   return [
     "⚡️ <b>Зафіксовано відключення:</b>",
     `🪫 <code>${begin} — ${end}</code>`,
     "",
     `⚠️ <i>${reason}.</i>`,
-    "\n",
-    `🔄 <i>${updateTimestamp}</i>`,
+    "",
+    `🔄 <i>${updateTimestamp || ""}</i>`,
     `💬 <i>${getCurrentTime()}</i>`,
   ].join("\n")
 }
 
 async function sendNotification(message) {
-  if (!TELEGRAM_BOT_TOKEN)
-    throw Error("❌ Missing telegram bot token or chat id.")
+  if (!TELEGRAM_BOT_TOKEN) throw Error("❌ Missing telegram bot token.")
   if (!TELEGRAM_CHAT_ID) throw Error("❌ Missing telegram chat id.")
 
   console.log("🌀 Sending notification...")
 
   const lastMessage = loadLastMessage() || {}
+
   try {
+    const endpoint = lastMessage.message_id ? "editMessageText" : "sendMessage"
+
     const response = await fetch(
-      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/${
-        lastMessage.message_id ? "editMessageText" : "sendMessage"
-      }`,
+      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/${endpoint}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -156,8 +148,9 @@ async function sendNotification(message) {
     )
 
     const data = await response.json()
-    saveLastMessage(data.result)
+    if (!data.ok) throw Error(data.description || "Telegram API error")
 
+    saveLastMessage(data.result)
     console.log("🟢 Notification sent.")
   } catch (error) {
     console.log("🔴 Notification not sent.", error.message)
@@ -166,9 +159,13 @@ async function sendNotification(message) {
 }
 
 async function run() {
+  // ✅ Принудительный тест Telegram на каждом запуске (потом можно убрать)
+  await sendNotification("✅ TEST: runner + telegram работают")
+
   const info = await getInfo()
   const isOutage = checkIsOutage(info)
   const isScheduled = checkIsScheduled(info)
+
   if (isOutage && !isScheduled) {
     const message = generateMessage(info)
     await sendNotification(message)

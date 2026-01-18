@@ -9,6 +9,7 @@ import {
   STREET,
   HOUSE,
   SHUTDOWNS_PAGE,
+  HA_WEBHOOK_URL,
 } from "./constants.js";
 
 import {
@@ -352,6 +353,46 @@ async function sendTimeChangeNotification(newEndDate) {
   }
 }
 
+async function sendToHomeAssistant(outageInfo, isActive) {
+  if (!HA_WEBHOOK_URL) {
+    console.log("ℹ️ HA_WEBHOOK_URL not configured, skipping Home Assistant notification");
+    return;
+  }
+
+  try {
+    console.log("🏠 Sending data to Home Assistant...");
+
+    const payload = {
+      state: isActive ? "outage" : "normal",
+      city: CITY,
+      street: STREET,
+      house: HOUSE,
+      timestamp: new Date().toISOString(),
+      ...(outageInfo && {
+        outage: {
+          start_date: outageInfo.start_date,
+          end_date: outageInfo.end_date,
+          reason: outageInfo.sub_type,
+        }
+      })
+    };
+
+    const response = await fetch(HA_WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (response.ok) {
+      console.log("🟢 Data sent to Home Assistant.");
+    } else {
+      console.log("🔴 Failed to send to Home Assistant:", response.status);
+    }
+  } catch (error) {
+    console.log("🔴 Error sending to Home Assistant:", error.message);
+  }
+}
+
 async function run() {
   // Тест можно включать/выключать по желанию
   // await sendNotification("✅ TEST: runner + telegram работают");
@@ -375,10 +416,16 @@ async function run() {
     }
 
     await sendNotification(message, outageInfo);
+
+    // Отправляем данные в Home Assistant
+    await sendToHomeAssistant(outageInfo, true);
   } else {
     console.log("ℹ️ No notification needed.");
     // Удаляем информацию о последнем сообщении когда отключения нет
     deleteLastMessage();
+
+    // Уведомляем Home Assistant что отключения нет
+    await sendToHomeAssistant(null, false);
   }
 }
 

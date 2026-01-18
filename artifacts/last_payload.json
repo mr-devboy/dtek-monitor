@@ -19,20 +19,20 @@
         "voluntarily": null
       },
       "7": {
-        "sub_type": "",
-        "start_date": "",
-        "end_date": "",
-        "type": "",
+        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
+        "start_date": "12:50 18.01.2026",
+        "end_date": "23:00 18.01.2026",
+        "type": "2",
         "sub_type_reason": [
           "GPV3.1"
         ],
         "voluntarily": null
       },
       "8": {
-        "sub_type": "",
-        "start_date": "",
-        "end_date": "",
-        "type": "",
+        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
+        "start_date": "12:50 18.01.2026",
+        "end_date": "23:00 18.01.2026",
+        "type": "2",
         "sub_type_reason": [
           "GPV1.2"
         ],
@@ -49,10 +49,10 @@
         "voluntarily": null
       },
       "11": {
-        "sub_type": "",
-        "start_date": "",
-        "end_date": "",
-        "type": "",
+        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
+        "start_date": "12:50 18.01.2026",
+        "end_date": "23:00 18.01.2026",
+        "type": "2",
         "sub_type_reason": [
           "GPV3.1"
         ],
@@ -519,33 +519,53 @@
         ],
         "voluntarily": null
       },
+      "19/11": {
+        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
+        "start_date": "12:50 18.01.2026",
+        "end_date": "23:00 18.01.2026",
+        "type": "2",
+        "sub_type_reason": [
+          "GPV3.1"
+        ],
+        "voluntarily": null
+      },
       "5/К.1": {
-        "sub_type": "",
-        "start_date": "",
-        "end_date": "",
-        "type": "",
+        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
+        "start_date": "12:50 18.01.2026",
+        "end_date": "23:00 18.01.2026",
+        "type": "2",
         "sub_type_reason": [
           "GPV3.1"
         ],
         "voluntarily": null
       },
       "5/К.2": {
-        "sub_type": "",
-        "start_date": "",
-        "end_date": "",
-        "type": "",
+        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
+        "start_date": "12:50 18.01.2026",
+        "end_date": "23:00 18.01.2026",
+        "type": "2",
         "sub_type_reason": [
           "GPV3.1"
         ],
         "voluntarily": null
       },
-      "19/11": {
-        "sub_type": "",
-        "start_date": "",
-        "end_date": "",
-        "type": "",
+      "34/1А": {
+        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
+        "start_date": "13:53 18.01.2026",
+        "end_date": "23:00 18.01.2026",
+        "type": "2",
         "sub_type_reason": [
-          "GPV3.1"
+          "GPV2.1"
+        ],
+        "voluntarily": null
+      },
+      "34/2": {
+        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
+        "start_date": "13:53 18.01.2026",
+        "end_date": "23:00 18.01.2026",
+        "type": "2",
+        "sub_type_reason": [
+          "GPV2.1"
         ],
         "voluntarily": null
       },
@@ -726,26 +746,6 @@
         "type": "",
         "sub_type_reason": [
           "GPV6.1"
-        ],
-        "voluntarily": null
-      },
-      "34/1А": {
-        "sub_type": "",
-        "start_date": "",
-        "end_date": "",
-        "type": "",
-        "sub_type_reason": [
-          "GPV2.1"
-        ],
-        "voluntarily": null
-      },
-      "34/2": {
-        "sub_type": "",
-        "start_date": "",
-        "end_date": "",
-        "type": "",
-        "sub_type_reason": [
-          "GPV2.1"
         ],
         "voluntarily": null
       },
@@ -1106,7 +1106,7 @@
     "showTableSchedule": false,
     "showTablePlan": true,
     "showTableFact": false,
-    "updateTimestamp": "13:08 18.01.2026",
+    "updateTimestamp": "17:25 18.01.2026",
     "fact": {
       "data": {
         "1768687200": {

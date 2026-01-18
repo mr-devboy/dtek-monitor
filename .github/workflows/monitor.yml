@@ -44,6 +44,7 @@ jobs:
           CITY: ${{ secrets.CITY }}
           STREET: ${{ secrets.STREET }}
           HOUSE: ${{ secrets.HOUSE }}
+          HA_WEBHOOK_URL: ${{ secrets.HA_WEBHOOK_URL }}
         run: node ./src/monitor.js
 
       - name: Commit updated artifacts

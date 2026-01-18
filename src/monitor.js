@@ -47,10 +47,6 @@ async function getInfo() {
     // Дождемся стабилизации страницы
     await page.waitForTimeout(2000);
 
-    // На всякий случай сохраним HTML страницы
-    const html = await page.content();
-    await writeArtifact("page.html", html);
-
     const csrfTokenTag = await page.waitForSelector('meta[name="csrf-token"]', {
       state: "attached",
       timeout: 15000,

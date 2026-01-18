@@ -116,6 +116,11 @@ async function getInfo() {
 
     await writeArtifact("last_payload.json", JSON.stringify(result, null, 2));
 
+    // Добавляем timestamp текущего обновления если его нет в ответе API
+    if (result.payload && !result.payload.updateTimestamp) {
+      result.payload.updateTimestamp = getCurrentTime();
+    }
+
     // Если сервер всё равно вернул Error — делаем скрин для понимания, что на странице
     if (result?.payload?.result === false) {
       await ensureArtifactsDir();
@@ -178,16 +183,53 @@ function generateMessage(info) {
   console.log("🌀 Generating message...");
 
   const updateTimestamp = info?.updateTimestamp || "";
-  // Если структура поменялась — лучше отправить “сырое” кратко, чем пустые даты
-  return [
+  const messageParts = [
     "⚡️ <b>Зафіксовано відключення:</b>",
     "",
     `🏙 <code>${CITY}</code>`,
     `📍 <code>${STREET}, ${HOUSE}</code>`,
     "",
-    `🔄 <i>${updateTimestamp}</i>`,
-    `💬 <i>${getCurrentTime()}</i>`,
-  ].join("\n");
+  ];
+
+  // Извлекаем детальную информацию об отключении для конкретного дома
+  if (info?.data && HOUSE) {
+    const houseData = info.data[HOUSE];
+    console.log("DEBUG houseData for", HOUSE, ":", JSON.stringify(houseData));
+
+    if (houseData) {
+      // Причина отключения (тип)
+      if (houseData.sub_type) {
+        messageParts.push(`📋 <b>Причина:</b> ${houseData.sub_type}`);
+      }
+
+      // Дополнительное описание причины
+      if (houseData.sub_type_reason && Array.isArray(houseData.sub_type_reason) && houseData.sub_type_reason.length > 0) {
+        const reasons = houseData.sub_type_reason.join(", ");
+        messageParts.push(`   <i>${reasons}</i>`);
+      }
+
+      // Время начала отключения
+      if (houseData.start_date) {
+        messageParts.push(`⏰ <b>Час початку:</b> ${houseData.start_date}`);
+      }
+
+      // Ориентировочное время восстановления
+      if (houseData.end_date) {
+        messageParts.push(`🔌 <b>Орієнтовний час відновлення:</b> до ${houseData.end_date}`);
+      }
+
+      messageParts.push("");
+    }
+  }
+
+  // Дата обновления информации
+  if (updateTimestamp) {
+    messageParts.push(`🔄 <b>Дата оновлення:</b> ${updateTimestamp}`);
+  }
+
+  messageParts.push(`💬 <b>Час запиту:</b> ${getCurrentTime()}`);
+
+  return messageParts.join("\n");
 }
 
 async function sendNotification(message) {

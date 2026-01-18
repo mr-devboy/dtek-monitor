@@ -264,14 +264,32 @@ function generateMessage(info) {
   return messageParts.join("\n");
 }
 
-async function sendNotification(message) {
+async function sendNotification(message, outageInfo) {
   if (!TELEGRAM_BOT_TOKEN) throw Error("❌ Missing telegram bot token.");
   if (!TELEGRAM_CHAT_ID) throw Error("❌ Missing telegram chat id.");
 
   console.log("🌀 Sending notification...");
 
   const lastMessage = loadLastMessage() || {};
-  const endpoint = lastMessage.message_id ? "editMessageText" : "sendMessage";
+  const lastOutageInfo = lastMessage.outage_info || {};
+
+  // Определяем тип уведомления
+  let isNewOutage = false;
+  let endDateChanged = false;
+
+  if (lastMessage.message_id && outageInfo) {
+    // Проверяем: это новое отключение или продолжение текущего
+    if (lastOutageInfo.start_date !== outageInfo.start_date) {
+      console.log("🆕 Detected new outage (different start_date)");
+      isNewOutage = true;
+      deleteLastMessage(); // Удаляем старую информацию, создадим новое сообщение
+    } else if (lastOutageInfo.end_date !== outageInfo.end_date && outageInfo.end_date) {
+      console.log("⏰ End time changed:", lastOutageInfo.end_date, "→", outageInfo.end_date);
+      endDateChanged = true;
+    }
+  }
+
+  const endpoint = (lastMessage.message_id && !isNewOutage) ? "editMessageText" : "sendMessage";
 
   try {
     const response = await fetch(
@@ -291,11 +309,46 @@ async function sendNotification(message) {
     const data = await response.json();
     if (!data.ok) throw Error(data.description || "Telegram API error");
 
-    saveLastMessage(data.result);
+    saveLastMessage({
+      ...data.result,
+      outage_info: outageInfo, // Сохраняем информацию об отключении
+    });
     console.log("🟢 Notification sent.");
+
+    // Если изменилось время восстановления - отправляем дополнительное уведомление
+    if (endDateChanged && outageInfo.end_date) {
+      console.log("📤 Sending additional notification about end time change...");
+      await sendTimeChangeNotification(outageInfo.end_date);
+    }
   } catch (error) {
     console.log("🔴 Notification not sent.", error.message);
     deleteLastMessage();
+  }
+}
+
+async function sendTimeChangeNotification(newEndDate) {
+  try {
+    const changeMessage = `⏰ <b>Змінено орієнтовний час відновлення:</b> до ${newEndDate}`;
+
+    const response = await fetch(
+      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: TELEGRAM_CHAT_ID,
+          text: changeMessage,
+          parse_mode: "HTML",
+        }),
+      }
+    );
+
+    const data = await response.json();
+    if (!data.ok) throw Error(data.description || "Telegram API error");
+
+    console.log("🟢 Time change notification sent.");
+  } catch (error) {
+    console.log("🔴 Time change notification not sent.", error.message);
   }
 }
 
@@ -309,9 +362,23 @@ async function run() {
 
   if (isOutage && !isScheduled) {
     const message = generateMessage(info);
-    await sendNotification(message);
+
+    // Извлекаем информацию об отключении для сохранения
+    let outageInfo = null;
+    if (info?.data && HOUSE && info.data[HOUSE]) {
+      const houseData = info.data[HOUSE];
+      outageInfo = {
+        start_date: houseData.start_date || "",
+        end_date: houseData.end_date || "",
+        sub_type: houseData.sub_type || "",
+      };
+    }
+
+    await sendNotification(message, outageInfo);
   } else {
     console.log("ℹ️ No notification needed.");
+    // Удаляем информацию о последнем сообщении когда отключения нет
+    deleteLastMessage();
   }
 }
 

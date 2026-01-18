@@ -172,10 +172,41 @@ function checkIsScheduled(info) {
   if (!info || info.result === false) return false;
   if (!info?.data) return false;
 
-  const asText = JSON.stringify(info.data).toLowerCase();
-  const isScheduled = asText.includes("графік");
+  // Проверяем конкретный дом
+  if (HOUSE && info.data[HOUSE]) {
+    const houseData = info.data[HOUSE];
 
-  isScheduled ? console.log("🗓️ Power outage scheduled!") : console.log("⚠️ Power outage not scheduled!");
+    // type === "2" означает экстренное отключение (НЕ по графику)
+    if (houseData.type === "2") {
+      console.log("⚠️ Emergency power outage (not scheduled)!");
+      return false;
+    }
+
+    // Проверяем наличие "Екстренні відключення" в sub_type
+    if (houseData.sub_type && houseData.sub_type.toLowerCase().includes("екстренні")) {
+      console.log("⚠️ Emergency power outage (not scheduled)!");
+      return false;
+    }
+
+    // Если есть start_date/end_date но не экстренное - это плановое
+    if (houseData.start_date || houseData.end_date) {
+      console.log("🗓️ Scheduled power outage!");
+      return true;
+    }
+  }
+
+  // Для всех домов проверяем общую логику (fallback)
+  const asText = JSON.stringify(info.data).toLowerCase();
+
+  // Если есть экстренные отключения - это НЕ запланировано
+  if (asText.includes("екстренні")) {
+    console.log("⚠️ Emergency power outage detected (not scheduled)!");
+    return false;
+  }
+
+  // Если упоминается график - вероятно плановое
+  const isScheduled = asText.includes("графік");
+  isScheduled ? console.log("🗓️ Scheduled power outage!") : console.log("⚠️ Power outage not scheduled!");
   return isScheduled;
 }
 

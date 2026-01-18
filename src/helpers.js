@@ -33,13 +33,14 @@ export function loadLastMessage() {
   return lastMessage
 }
 
-export function saveLastMessage({ date, message_id } = {}) {
+export function saveLastMessage({ date, message_id, outage_info } = {}) {
   fs.mkdirSync(path.dirname(LAST_MESSAGE_FILE), { recursive: true })
   fs.writeFileSync(
     LAST_MESSAGE_FILE,
     JSON.stringify({
       message_id,
       date,
+      outage_info, // Сохраняем информацию об отключении (start_date, end_date, sub_type)
     })
   )
 }

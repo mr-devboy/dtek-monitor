@@ -9,10 +9,10 @@
     "result": true,
     "data": {
       "4": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
         "sub_type_reason": [
           "GPV1.2"
         ],
@@ -29,10 +29,10 @@
         "voluntarily": null
       },
       "8": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
         "sub_type_reason": [
           "GPV1.2"
         ],
@@ -79,20 +79,20 @@
         "voluntarily": null
       },
       "24": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
         "sub_type_reason": [
           "GPV2.1"
         ],
         "voluntarily": null
       },
       "26": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
         "sub_type_reason": [
           "GPV2.1"
         ],
@@ -249,10 +249,10 @@
         "voluntarily": null
       },
       "54": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
         "sub_type_reason": [
           "GPV6.1"
         ],
@@ -390,30 +390,30 @@
         "voluntarily": null
       },
       "75": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
         "sub_type_reason": [
           "GPV6.1"
         ],
         "voluntarily": null
       },
       "77": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
         "sub_type_reason": [
           "GPV6.1"
         ],
         "voluntarily": null
       },
       "79": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
         "sub_type_reason": [
           "GPV6.1"
         ],
@@ -430,10 +430,10 @@
         "voluntarily": null
       },
       "85": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
         "sub_type_reason": [
           "GPV6.1"
         ],
@@ -443,16 +443,6 @@
         "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
         "start_date": "08:20 18.01.2026",
         "end_date": "20:00 18.01.2026",
-        "type": "2",
-        "sub_type_reason": [
-          "GPV6.1"
-        ],
-        "voluntarily": null
-      },
-      "73А": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
         "type": "2",
         "sub_type_reason": [
           "GPV6.1"
@@ -469,96 +459,6 @@
         ],
         "voluntarily": null
       },
-      "30/2": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
-        "sub_type_reason": [
-          "GPV2.1"
-        ],
-        "voluntarily": null
-      },
-      "30/1": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
-        "sub_type_reason": [
-          "GPV2.1"
-        ],
-        "voluntarily": null
-      },
-      "34/А": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
-        "sub_type_reason": [
-          "GPV2.1"
-        ],
-        "voluntarily": null
-      },
-      "36А": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
-        "sub_type_reason": [
-          "GPV2.1"
-        ],
-        "voluntarily": null
-      },
-      "71/Г": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
-        "sub_type_reason": [
-          "GPV6.1"
-        ],
-        "voluntarily": null
-      },
-      "73/В": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
-        "sub_type_reason": [
-          "GPV6.1"
-        ],
-        "voluntarily": null
-      },
-      "34/Б": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
-        "sub_type_reason": [
-          "GPV2.1"
-        ],
-        "voluntarily": null
-      },
-      "85А": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
-        "sub_type_reason": [
-          "GPV6.1"
-        ],
-        "voluntarily": null
-      },
-      "85Б": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
-        "sub_type_reason": [
-          "GPV6.1"
-        ],
-        "voluntarily": null
-      },
       "46/1": {
         "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
         "start_date": "08:20 18.01.2026",
@@ -569,20 +469,10 @@
         ],
         "voluntarily": null
       },
-      "71/Д": {
+      "54/А": {
         "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
-        "sub_type_reason": [
-          "GPV6.1"
-        ],
-        "voluntarily": null
-      },
-      "83/А": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
+        "start_date": "08:20 18.01.2026",
+        "end_date": "20:00 18.01.2026",
         "type": "2",
         "sub_type_reason": [
           "GPV6.1"
@@ -590,6 +480,16 @@
         "voluntarily": null
       },
       "60/А": {
+        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
+        "start_date": "08:20 18.01.2026",
+        "end_date": "20:00 18.01.2026",
+        "type": "2",
+        "sub_type_reason": [
+          "GPV6.1"
+        ],
+        "voluntarily": null
+      },
+      "48/А": {
         "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
         "start_date": "08:20 18.01.2026",
         "end_date": "20:00 18.01.2026",
@@ -609,86 +509,6 @@
         ],
         "voluntarily": null
       },
-      "81Б": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
-        "sub_type_reason": [
-          "GPV6.1"
-        ],
-        "voluntarily": null
-      },
-      "75А": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
-        "sub_type_reason": [
-          "GPV6.1"
-        ],
-        "voluntarily": null
-      },
-      "71/Б": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
-        "sub_type_reason": [
-          "GPV6.1"
-        ],
-        "voluntarily": null
-      },
-      "54/А": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:20 18.01.2026",
-        "end_date": "20:00 18.01.2026",
-        "type": "2",
-        "sub_type_reason": [
-          "GPV6.1"
-        ],
-        "voluntarily": null
-      },
-      "71/Е": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
-        "sub_type_reason": [
-          "GPV6.1"
-        ],
-        "voluntarily": null
-      },
-      "48/А": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:20 18.01.2026",
-        "end_date": "20:00 18.01.2026",
-        "type": "2",
-        "sub_type_reason": [
-          "GPV6.1"
-        ],
-        "voluntarily": null
-      },
-      "73/Д": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
-        "sub_type_reason": [
-          "GPV6.1"
-        ],
-        "voluntarily": null
-      },
-      "73/Ж": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
-        "sub_type_reason": [
-          "GPV6.1"
-        ],
-        "voluntarily": null
-      },
       "52/А": {
         "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
         "start_date": "08:20 18.01.2026",
@@ -696,86 +516,6 @@
         "type": "2",
         "sub_type_reason": [
           "GPV6.1"
-        ],
-        "voluntarily": null
-      },
-      "73/Г": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
-        "sub_type_reason": [
-          "GPV6.1"
-        ],
-        "voluntarily": null
-      },
-      "73/Е": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
-        "sub_type_reason": [
-          "GPV6.1"
-        ],
-        "voluntarily": null
-      },
-      "71/З": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
-        "sub_type_reason": [
-          "GPV6.1"
-        ],
-        "voluntarily": null
-      },
-      "52/3": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
-        "sub_type_reason": [
-          "GPV6.1"
-        ],
-        "voluntarily": null
-      },
-      "71/В": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
-        "sub_type_reason": [
-          "GPV6.1"
-        ],
-        "voluntarily": null
-      },
-      "22/15": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
-        "sub_type_reason": [
-          "GPV2.1"
-        ],
-        "voluntarily": null
-      },
-      "31/1": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
-        "sub_type_reason": [
-          "GPV2.1"
-        ],
-        "voluntarily": null
-      },
-      "31/КОРП.2": {
-        "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
-        "start_date": "08:00 18.01.2026",
-        "end_date": "12:00 18.01.2026",
-        "type": "2",
-        "sub_type_reason": [
-          "GPV2.1"
         ],
         "voluntarily": null
       },
@@ -809,6 +549,186 @@
         ],
         "voluntarily": null
       },
+      "71/Г": {
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
+        "sub_type_reason": [
+          "GPV6.1"
+        ],
+        "voluntarily": null
+      },
+      "73/В": {
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
+        "sub_type_reason": [
+          "GPV6.1"
+        ],
+        "voluntarily": null
+      },
+      "73А": {
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
+        "sub_type_reason": [
+          "GPV6.1"
+        ],
+        "voluntarily": null
+      },
+      "83/А": {
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
+        "sub_type_reason": [
+          "GPV6.1"
+        ],
+        "voluntarily": null
+      },
+      "73/Д": {
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
+        "sub_type_reason": [
+          "GPV6.1"
+        ],
+        "voluntarily": null
+      },
+      "73/Ж": {
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
+        "sub_type_reason": [
+          "GPV6.1"
+        ],
+        "voluntarily": null
+      },
+      "71/Е": {
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
+        "sub_type_reason": [
+          "GPV6.1"
+        ],
+        "voluntarily": null
+      },
+      "71/З": {
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
+        "sub_type_reason": [
+          "GPV6.1"
+        ],
+        "voluntarily": null
+      },
+      "71/Б": {
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
+        "sub_type_reason": [
+          "GPV6.1"
+        ],
+        "voluntarily": null
+      },
+      "71/В": {
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
+        "sub_type_reason": [
+          "GPV6.1"
+        ],
+        "voluntarily": null
+      },
+      "71/Д": {
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
+        "sub_type_reason": [
+          "GPV6.1"
+        ],
+        "voluntarily": null
+      },
+      "52/3": {
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
+        "sub_type_reason": [
+          "GPV6.1"
+        ],
+        "voluntarily": null
+      },
+      "73/Г": {
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
+        "sub_type_reason": [
+          "GPV6.1"
+        ],
+        "voluntarily": null
+      },
+      "73/Е": {
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
+        "sub_type_reason": [
+          "GPV6.1"
+        ],
+        "voluntarily": null
+      },
+      "75А": {
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
+        "sub_type_reason": [
+          "GPV6.1"
+        ],
+        "voluntarily": null
+      },
+      "81Б": {
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
+        "sub_type_reason": [
+          "GPV6.1"
+        ],
+        "voluntarily": null
+      },
+      "85А": {
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
+        "sub_type_reason": [
+          "GPV6.1"
+        ],
+        "voluntarily": null
+      },
+      "85Б": {
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
+        "sub_type_reason": [
+          "GPV6.1"
+        ],
+        "voluntarily": null
+      },
       "34/1А": {
         "sub_type": "",
         "start_date": "",
@@ -820,6 +740,86 @@
         "voluntarily": null
       },
       "34/2": {
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
+        "sub_type_reason": [
+          "GPV2.1"
+        ],
+        "voluntarily": null
+      },
+      "30/1": {
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
+        "sub_type_reason": [
+          "GPV2.1"
+        ],
+        "voluntarily": null
+      },
+      "30/2": {
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
+        "sub_type_reason": [
+          "GPV2.1"
+        ],
+        "voluntarily": null
+      },
+      "22/15": {
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
+        "sub_type_reason": [
+          "GPV2.1"
+        ],
+        "voluntarily": null
+      },
+      "34/А": {
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
+        "sub_type_reason": [
+          "GPV2.1"
+        ],
+        "voluntarily": null
+      },
+      "36А": {
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
+        "sub_type_reason": [
+          "GPV2.1"
+        ],
+        "voluntarily": null
+      },
+      "34/Б": {
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
+        "sub_type_reason": [
+          "GPV2.1"
+        ],
+        "voluntarily": null
+      },
+      "31/1": {
+        "sub_type": "",
+        "start_date": "",
+        "end_date": "",
+        "type": "",
+        "sub_type_reason": [
+          "GPV2.1"
+        ],
+        "voluntarily": null
+      },
+      "31/КОРП.2": {
         "sub_type": "",
         "start_date": "",
         "end_date": "",
@@ -1106,7 +1106,7 @@
     "showTableSchedule": false,
     "showTablePlan": true,
     "showTableFact": false,
-    "updateTimestamp": "10:51 18.01.2026",
+    "updateTimestamp": "12:06 18.01.2026",
     "fact": {
       "data": {
         "1768687200": {

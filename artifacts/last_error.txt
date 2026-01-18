@@ -1,3 +1,7 @@
-page.content: Unable to retrieve content because the page is navigating and changing the content.
-    at getInfo (/home/runner/work/dtek-monitor/dtek-monitor/src/monitor.js:51:29)
-    at async run (/home/runner/work/dtek-monitor/dtek-monitor/src/monitor.js:400:16)
+page.waitForSelector: Timeout 15000ms exceeded.
+Call log:
+  - waiting for locator('meta[name="csrf-token"]')
+    - waiting for" https://www.dtek-kem.com.ua/ua/shutdowns" navigation to finish...
+
+    at getInfo (/home/runner/work/dtek-monitor/dtek-monitor/src/monitor.js:50:37)
+    at async run (/home/runner/work/dtek-monitor/dtek-monitor/src/monitor.js:401:16)

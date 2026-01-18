@@ -1,0 +1,3 @@
+page.content: Unable to retrieve content because the page is navigating and changing the content.
+    at getInfo (/home/runner/work/dtek-monitor/dtek-monitor/src/monitor.js:51:29)
+    at async run (/home/runner/work/dtek-monitor/dtek-monitor/src/monitor.js:400:16)

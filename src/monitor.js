@@ -93,7 +93,9 @@ function checkIsScheduled(info) {
   }
 
   const { sub_type } = info?.data?.[HOUSE] || {}
-  const isScheduled = sub_type.toLowerCase().includes("графік")
+  const isScheduled =
+    !sub_type.toLowerCase().includes("авар") &&
+    !sub_type.toLowerCase().includes("екст")
 
   isScheduled
     ? console.log("🗓️ Power outage scheduled!")

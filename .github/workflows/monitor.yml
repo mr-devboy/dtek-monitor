@@ -4,6 +4,8 @@ on:
   schedule:
     - cron: "*/10 * * * *"
   workflow_dispatch:
+  repository_dispatch:
+    types: [power-outage-detected]
 
 jobs:
   monitor:
@@ -15,6 +17,15 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.PAT }}
+          
+      - name: Runner sanity check
+        run: |
+          echo "Runner works"
+          uname -a
+          date
+          pwd
+          ls -la
+      
 
       - name: Set up Node.js
         uses: actions/setup-node@v4

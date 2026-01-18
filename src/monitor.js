@@ -217,8 +217,7 @@ function generateMessage(info) {
   const messageParts = [
     "⚡️ <b>Зафіксовано відключення:</b>",
     "",
-    `🏙 <code>${CITY}</code>`,
-    `📍 <code>${STREET}, ${HOUSE}</code>`,
+    `📍 <code>${CITY}, ${STREET}, ${HOUSE}</code>`,
     "",
   ];
 
@@ -235,7 +234,9 @@ function generateMessage(info) {
 
       // Дополнительное описание причины
       if (houseData.sub_type_reason && Array.isArray(houseData.sub_type_reason) && houseData.sub_type_reason.length > 0) {
-        const reasons = houseData.sub_type_reason.join(", ");
+        const reasons = houseData.sub_type_reason
+          .map(r => r.replace(/GPV/g, 'Група '))
+          .join(", ");
         messageParts.push(`   <i>${reasons}</i>`);
       }
 

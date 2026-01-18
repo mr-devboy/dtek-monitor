@@ -150,17 +150,22 @@ function checkIsOutage(info) {
     return false;
   }
 
-  // ⚠️ Тут надо понимать реальную структуру info.data.
-  // Пока оставим общий детектор: если в data есть что-то похожее на start/end/type — считаем что есть отключение.
-  const asText = JSON.stringify(info.data);
-  const looksLikeOutage =
-    asText.includes("start_date") ||
-    asText.includes("end_date") ||
-    asText.includes("sub_type") ||
-    asText.includes("type");
+  // Проверяем есть ли реальное отключение для нашего дома
+  if (!HOUSE || !info.data[HOUSE]) {
+    console.log("⚠️ No data for specified house.");
+    return false;
+  }
 
-  looksLikeOutage ? console.log("🚨 Power outage detected!") : console.log("⚡️ No power outage!");
-  return looksLikeOutage;
+  const houseData = info.data[HOUSE];
+
+  // Реальное отключение = когда sub_type не пустой И есть хотя бы одна дата
+  const hasOutage =
+    houseData.sub_type &&
+    houseData.sub_type.trim() !== "" &&
+    (houseData.start_date || houseData.end_date);
+
+  hasOutage ? console.log("🚨 Power outage detected!") : console.log("⚡️ No power outage!");
+  return hasOutage;
 }
 
 function checkIsScheduled(info) {

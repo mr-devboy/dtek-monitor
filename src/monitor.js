@@ -163,6 +163,9 @@ async function sendNotification(message) {
 async function run() {
   const info = await getInfo()
   const isOutage = checkIsOutage(info)
+
+  if (!isOutage) return
+
   const isScheduled = checkIsScheduled(info)
   if (isOutage && !isScheduled) {
     const message = generateMessage(info)

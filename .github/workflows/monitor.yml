@@ -1,8 +1,6 @@
 name: Run power outages monitor
 
 on:
-  schedule:
-    - cron: "*/10 * * * *"
   workflow_dispatch:
   repository_dispatch:
     types: [power-outage-detected]

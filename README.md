@@ -61,7 +61,60 @@
 7. Натисніть **+ Add permissions** → відмітьте `Read access to metadata` та `Read and Write access to code`.
 8. Натисніть **Generate token** та скопіюйте токен.
 
-### 5. Запуск Actions
+### 5. Налаштування автоматичного запуску через cron-job.org
+
+Оскільки вбудований GitHub Actions cron працює нестабільно (затримки до 1 години), рекомендуємо використовувати зовнішній сервіс [cron-job.org](https://console.cron-job.org/).
+
+#### Створення додаткового PAT для cron-job.org
+
+1. Створіть **новий** Fine-grained PAT (окремий від PAT для workflow):
+   - **Repository access**: `Only select repositories` → оберіть ваш репозиторій
+   - **Permissions**:
+     - `Contents`: Read and Write
+     - `Metadata`: Read
+2. Збережіть токен — він знадобиться для налаштування cron-job.org
+
+#### Налаштування завдання в cron-job.org
+
+1. Зареєструйтесь на [cron-job.org](https://console.cron-job.org/)
+2. Створіть нове завдання (Create Cronjob)
+3. Заповніть налаштування:
+
+**URL:**
+```
+https://api.github.com/repos/YOUR_USERNAME/dtek-monitor/dispatches
+```
+(замініть `YOUR_USERNAME` на ваш GitHub username)
+
+**Schedule:** Кожні 10-30 хвилин (наприклад: `*/10 * * * *`)
+
+**Request Method:** `POST`
+
+**Request Headers:**
+```
+Authorization: Bearer YOUR_PAT_TOKEN
+Accept: application/vnd.github+json
+Content-Type: application/json
+```
+(замініть `YOUR_PAT_TOKEN` на токен з кроку вище)
+
+**Request Body:**
+```json
+{"event_type":"power-outage-detected"}
+```
+
+4. Збережіть завдання та перевірте його роботу кнопкою "Test Run"
+
+#### Поширені помилки
+
+| Помилка | Причина | Рішення |
+|---------|---------|---------|
+| `403 Forbidden` | Недостатньо прав токена | Перевірте що PAT має `Contents: Read and Write` |
+| `404 Not Found` | Неправильний URL | Перевірте username та назву репозиторію |
+| `422 Unprocessable Entity` | Неправильний JSON body | Перевірте формат: `{"event_type":"power-outage-detected"}` |
+| `Internal server error` | Неправильні headers | Перевірте що `Authorization` починається з `Bearer ` (з пробілом) |
+
+### 6. Ручний запуск Actions
 
 1. Перейдіть на вкладку **Actions**.
 2. Знайдіть та відкрийте workflow з назвою **"Run power outages monitor"**.

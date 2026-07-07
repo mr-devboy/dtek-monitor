@@ -1,6 +1,6 @@
 {
   "name": "dtek-monitor",
-  "version": "1.2.0",
+  "version": "1.2.2",
   "description": "DTEK power outages monitor",
   "type": "module",
   "main": "src/monitor.js",

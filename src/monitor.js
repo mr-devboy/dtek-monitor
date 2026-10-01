@@ -159,6 +159,11 @@ async function sendNotification(message) {
 }
 
 async function run() {
+  // 🧪 ТЕСТ — видалити цей блок після перевірки
+  await sendNotification("🧪 Це тестове повідомлення для перевірки сповіщень про аварійні відключення від ДТЕК. Будь ласка, ігноруйте.")
+  return
+  // 🧪 кінець тестового блоку
+
   const info = await getInfo()
   const isOutage = checkIsOutage(info)
 

@@ -110,26 +110,19 @@ function checkIsScheduled(info) {
 }
 
 function generateMessage(info) {
-  console.log("🌀 Generating message...")
-
   const { sub_type, start_date, end_date } = info?.data?.[HOUSE] || {}
-  const { updateTimestamp } = info || {}
-
   const reason = capitalize(sub_type)
-  const begin = start_date.split(" ")[0]
-  const end = end_date.split(" ")[0]
+
+  const beginTime = start_date.split(" ")[0]
+  const endTime = end_date.split(" ")[0]
 
   return [
-    "⚡️ <b>Зафіксовано відключення:</b>",
-    `🪫 <code>${begin} — ${end}</code>`,
-    "",
-    `⚠️ <i>${reason}.</i>`,
-    "\n",
-    `🔄 <i>${updateTimestamp}</i>`,
-    `💬 <i>${getCurrentTime()}</i>`,
+    `🚨 <b>ДТЕК Аварійне</b> ⚡ ${CITY}, ${STREET} ${HOUSE}`,
+    `🔴 <b>${beginTime}</b> Підтверджено аварійне відключення`,
+    `📋 ${reason}`,
+    `🕐 Орієнтовний час відновлення: <b>${endTime}</b>`,
   ].join("\n")
 }
-
 async function sendNotification(message) {
   if (!TELEGRAM_BOT_TOKEN)
     throw Error("❌ Missing telegram bot token or chat id.")

@@ -158,6 +158,11 @@ async function sendNotification(message) {
     )
 
     const data = await response.json()
+
+    if (data.description?.includes("not modified")) {
+      console.log("🟡 Notification not changed.")
+      return
+    }
     if (!data.ok) throw Error(data.description)
 
     saveLastMessage(data.result)

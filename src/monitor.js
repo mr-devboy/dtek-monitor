@@ -8,6 +8,8 @@ import {
   STREET,
   HOUSE,
   SHUTDOWNS_PAGE,
+  RETRIES_MAX_COUNT,
+  RETRIES_TIMEOUT,
 } from "./constants.js"
 
 import {
@@ -18,13 +20,16 @@ import {
   saveLastMessage,
 } from "./helpers.js"
 
+let getInfoRetries = 0
+let sendNotificationRetries = 0
+
 async function getInfo() {
   console.log("🌀 Getting info...")
 
   const browser = await chromium.launch({ headless: true })
-  const browserPage = await browser.newPage()
 
   try {
+    const browserPage = await browser.newPage()
     await browserPage.goto(SHUTDOWNS_PAGE, {
       waitUntil: "load",
     })
@@ -63,21 +68,28 @@ async function getInfo() {
       { REGION, CITY, STREET, csrfToken }
     )
 
+    if (!info?.data) throw Error("power outage info missed")
+
     console.log("✅ Getting info finished.")
     return info
   } catch (error) {
-    throw Error(`❌ Getting info failed: ${error.message}`)
+    console.error(`❌ Getting info failed: ${error.message}.`)
   } finally {
     await browser.close()
   }
+
+  if (getInfoRetries < RETRIES_MAX_COUNT) {
+    console.log("🌀 Try getting info again...")
+    await new Promise((resolve) => setTimeout(resolve, RETRIES_TIMEOUT))
+    getInfoRetries++
+    return await getInfo()
+  }
+
+  throw Error(`❌ Getting info failed after ${RETRIES_MAX_COUNT} retries.`)
 }
 
 function checkIsOutage(info) {
   console.log("🌀 Checking power outage...")
-
-  if (!info?.data) {
-    throw Error("❌ Power outage info missed.")
-  }
 
   const house = info.data[HOUSE]
   if (!house) throw Error(`❌ House ${HOUSE} not found.`)
@@ -95,10 +107,6 @@ function checkIsOutage(info) {
 
 function checkIsScheduled(info) {
   console.log("🌀 Checking whether power outage scheduled...")
-
-  if (!info?.data) {
-    throw Error("❌ Power outage info missed.")
-  }
 
   const { sub_type } = info?.data?.[HOUSE] || {}
   const isScheduled =
@@ -168,10 +176,22 @@ async function sendNotification(message) {
     saveLastMessage(data.result)
 
     console.log("🟢 Notification sent.")
+    return
   } catch (error) {
-    console.log("🔴 Notification not sent.", error.message)
+    console.error(`❌ Sending notification failed: ${error.message}.`)
     deleteLastMessage()
   }
+
+  if (sendNotificationRetries < RETRIES_MAX_COUNT) {
+    console.log("🌀 Try sending notification again...")
+    await new Promise((resolve) => setTimeout(resolve, RETRIES_TIMEOUT))
+    sendNotificationRetries++
+    return await sendNotification(message)
+  }
+
+  throw Error(
+    `❌ Sending notification failed after ${RETRIES_MAX_COUNT} retries.`
+  )
 }
 
 async function run() {

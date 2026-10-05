@@ -158,6 +158,8 @@ async function sendNotification(message) {
     )
 
     const data = await response.json()
+    if (!data.ok) throw Error(data.description)
+
     saveLastMessage(data.result)
 
     console.log("🟢 Notification sent.")

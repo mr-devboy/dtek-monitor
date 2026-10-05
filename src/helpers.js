@@ -63,3 +63,12 @@ export function getCurrentTime() {
 
   return `${time} ${date}`
 }
+
+export function checkIsNight() {
+  const hours = new Date().toLocaleString("en-US", {
+    timeZone: "Europe/Kyiv",
+    hour: "numeric",
+    hour12: false,
+  })
+  return hours >= 0 && hours < 8
+}

@@ -132,38 +132,54 @@ function generateMessage(info) {
   const begin = start_date.split(" ")[0]
   const end = end_date.split(" ")[0]
 
-  return [
-    "⚡️ <b>Зафіксовано відключення:</b>",
+  const outageText = [
     `🪫 <code>${begin} — ${end}</code>`,
     "",
     `⚠️ <i>${reason}.</i>`,
+  ].join("\n")
+
+  const text = [
+    "⚡️ <b>Зафіксовано відключення:</b>",
+    outageText,
     "",
     `📢 <i>${update}</i>`,
     `🤖 <i>${getCurrentTime()}</i>`,
   ].join("\n")
+
+  return { text, outageText }
 }
 
-async function sendNotification(message) {
+async function sendNotification({ text, outageText }) {
   if (!TELEGRAM_BOT_TOKEN) throw Error("❌ Missing telegram bot token.")
   if (!TELEGRAM_CHAT_ID) throw Error("❌ Missing telegram chat id.")
 
   console.log("🌀 Sending notification...")
 
   const lastMessage = loadLastMessage() || {}
+  const isOutageChanged = lastMessage.outageText !== outageText
+  const isEdit = Boolean(lastMessage.message_id) && !isOutageChanged
+  const isReply = Boolean(lastMessage.message_id) && isOutageChanged
+
   try {
     const response = await fetch(
       `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/${
-        lastMessage.message_id ? "editMessageText" : "sendMessage"
+        isEdit ? "editMessageText" : "sendMessage"
       }`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           chat_id: TELEGRAM_CHAT_ID,
-          text: message,
+          text,
           parse_mode: "HTML",
           disable_notification: checkIsNight(),
-          message_id: lastMessage.message_id ?? undefined,
+          message_id: isEdit ? lastMessage.message_id : undefined,
+          reply_parameters: isReply
+            ? {
+                message_id: lastMessage.message_id,
+                allow_sending_without_reply: true,
+              }
+            : undefined,
         }),
       }
     )
@@ -176,7 +192,7 @@ async function sendNotification(message) {
     }
     if (!data.ok) throw Error(data.description)
 
-    saveLastMessage(data.result)
+    saveLastMessage({ ...data.result, outageText })
 
     console.log("🟢 Notification sent.")
     return
@@ -189,7 +205,7 @@ async function sendNotification(message) {
     console.log("🌀 Try sending notification again...")
     await new Promise((resolve) => setTimeout(resolve, RETRIES_TIMEOUT))
     sendNotificationRetries++
-    return await sendNotification(message)
+    return await sendNotification({ text, outageText })
   }
 
   throw Error(

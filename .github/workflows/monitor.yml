@@ -23,8 +23,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
         with:
-          fetch-depth: 0
           token: ${{ secrets.PAT }}
+
+      - name: Checkout artifacts
+        run: |
+          REMOTE_BRANCH=$(git ls-remote --heads origin artifacts)
+
+          if [ -n "$REMOTE_BRANCH" ]; then
+            git fetch --depth 1 origin artifacts
+            git worktree add --detach artifacts FETCH_HEAD
+          else
+            git worktree add --orphan -b artifacts artifacts
+          fi
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -52,16 +62,17 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-          git add artifacts/
+          git -C artifacts add --all
 
-          if ! git diff --cached --quiet; then
-            LAST_COMMIT_MSG=$(git log -1 --pretty=%B || echo "")
-            if [ "$LAST_COMMIT_MSG" = "chore: update artifacts" ]; then
-              git commit --amend --no-edit
-            else
-              git commit -m "chore: update artifacts"
-            fi
-            git push origin main --force-with-lease
-          else
+          if git -C artifacts diff --cached --quiet; then
             echo "No changes to commit"
+            exit 0
           fi
+
+          if git -C artifacts rev-parse --verify --quiet HEAD; then
+            git -C artifacts commit --amend --no-edit
+          else
+            git -C artifacts commit -m "chore: update artifacts"
+          fi
+
+          git push --force origin "$(git -C artifacts rev-parse HEAD):refs/heads/artifacts"

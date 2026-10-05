@@ -46,7 +46,7 @@ export function saveLastMessage({ date, message_id, outageText } = {}) {
 }
 
 export function deleteLastMessage() {
-  fs.rmdirSync(path.dirname(LAST_MESSAGE_FILE), { recursive: true })
+  fs.rmSync(LAST_MESSAGE_FILE, { force: true })
 }
 
 export function getCurrentTime() {

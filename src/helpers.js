@@ -61,7 +61,7 @@ export function getCurrentTime() {
     minute: "2-digit",
   })
 
-  return `${time} ${date}`
+  return `${date} ${time}`
 }
 
 export function checkIsNight() {

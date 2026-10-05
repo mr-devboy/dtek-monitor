@@ -126,6 +126,7 @@ function generateMessage(info) {
 
   const { sub_type, start_date, end_date } = info?.data?.[HOUSE] || {}
   const { updateTimestamp } = info || {}
+  const update = updateTimestamp?.split(" ").reverse().join(" ")
 
   const reason = capitalize(sub_type)
   const begin = start_date.split(" ")[0]
@@ -137,8 +138,8 @@ function generateMessage(info) {
     "",
     `⚠️ <i>${reason}.</i>`,
     "\n",
-    `🔄 <i>${updateTimestamp}</i>`,
-    `💬 <i>${getCurrentTime()}</i>`,
+    `📢 <i>${update}</i>`,
+    `🤖 <i>${getCurrentTime()}</i>`,
   ].join("\n")
 }
 

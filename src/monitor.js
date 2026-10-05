@@ -137,7 +137,7 @@ function generateMessage(info) {
     `🪫 <code>${begin} — ${end}</code>`,
     "",
     `⚠️ <i>${reason}.</i>`,
-    "\n",
+    "",
     `📢 <i>${update}</i>`,
     `🤖 <i>${getCurrentTime()}</i>`,
   ].join("\n")

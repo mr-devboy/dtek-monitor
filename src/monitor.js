@@ -79,7 +79,10 @@ function checkIsOutage(info) {
     throw Error("❌ Power outage info missed.")
   }
 
-  const { sub_type, start_date, end_date, type } = info?.data?.[HOUSE] || {}
+  const house = info.data[HOUSE]
+  if (!house) throw Error(`❌ House ${HOUSE} not found.`)
+
+  const { sub_type, start_date, end_date, type } = house
   const isOutageDetected =
     sub_type !== "" || start_date !== "" || end_date !== "" || type !== ""
 

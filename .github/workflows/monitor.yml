@@ -13,6 +13,7 @@ concurrency:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   monitor:
@@ -74,3 +75,9 @@ jobs:
           fi
 
           git push --force origin "$(git -C artifacts rev-parse HEAD):refs/heads/artifacts"
+
+      - name: Keep workflow enabled
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method PUT "repos/$GITHUB_REPOSITORY/actions/workflows/monitor.yml/enable"

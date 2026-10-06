@@ -21,3 +21,6 @@ export const SHUTDOWNS_PAGE =
   shutdownsPages[String(REGION).toLocaleLowerCase()] ?? shutdownsPages["kr"]
 
 export const LAST_MESSAGE_FILE = path.resolve("artifacts", `last-message.json`)
+
+export const RETRIES_MAX_COUNT = 5
+export const RETRIES_TIMEOUT = 5000

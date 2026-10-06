@@ -8,23 +8,29 @@ import {
   STREET,
   HOUSE,
   SHUTDOWNS_PAGE,
+  RETRIES_MAX_COUNT,
+  RETRIES_TIMEOUT,
 } from "./constants.js"
 
 import {
   capitalize,
+  checkIsNight,
   deleteLastMessage,
   getCurrentTime,
   loadLastMessage,
   saveLastMessage,
 } from "./helpers.js"
 
+let getInfoRetries = 0
+let sendNotificationRetries = 0
+
 async function getInfo() {
   console.log("🌀 Getting info...")
 
   const browser = await chromium.launch({ headless: true })
-  const browserPage = await browser.newPage()
 
   try {
+    const browserPage = await browser.newPage()
     await browserPage.goto(SHUTDOWNS_PAGE, {
       waitUntil: "load",
     })
@@ -63,23 +69,33 @@ async function getInfo() {
       { REGION, CITY, STREET, csrfToken }
     )
 
+    if (!info?.data) throw Error("power outage info missed")
+
     console.log("✅ Getting info finished.")
     return info
   } catch (error) {
-    throw Error(`❌ Getting info failed: ${error.message}`)
+    console.error(`❌ Getting info failed: ${error.message}.`)
   } finally {
     await browser.close()
   }
+
+  if (getInfoRetries < RETRIES_MAX_COUNT) {
+    console.log("🌀 Try getting info again...")
+    await new Promise((resolve) => setTimeout(resolve, RETRIES_TIMEOUT))
+    getInfoRetries++
+    return await getInfo()
+  }
+
+  throw Error(`❌ Getting info failed after ${RETRIES_MAX_COUNT} retries.`)
 }
 
 function checkIsOutage(info) {
   console.log("🌀 Checking power outage...")
 
-  if (!info?.data) {
-    throw Error("❌ Power outage info missed.")
-  }
+  const house = info.data[HOUSE]
+  if (!house) throw Error(`❌ House ${HOUSE} not found.`)
 
-  const { sub_type, start_date, end_date, type } = info?.data?.[HOUSE] || {}
+  const { sub_type, start_date, end_date, type } = house
   const isOutageDetected =
     sub_type !== "" || start_date !== "" || end_date !== "" || type !== ""
 
@@ -92,10 +108,6 @@ function checkIsOutage(info) {
 
 function checkIsScheduled(info) {
   console.log("🌀 Checking whether power outage scheduled...")
-
-  if (!info?.data) {
-    throw Error("❌ Power outage info missed.")
-  }
 
   const { sub_type } = info?.data?.[HOUSE] || {}
   const isScheduled =
@@ -110,52 +122,95 @@ function checkIsScheduled(info) {
 }
 
 function generateMessage(info) {
+  console.log("🌀 Generating message...")
+
   const { sub_type, start_date, end_date } = info?.data?.[HOUSE] || {}
+  const { updateTimestamp } = info || {}
+  const update = updateTimestamp?.split(" ").reverse().join(" ")
+
   const reason = capitalize(sub_type)
+  const begin = start_date.split(" ")[0]
+  const end = end_date.split(" ")[0]
 
-  const beginTime = start_date.split(" ")[0]
-  const endTime = end_date.split(" ")[0]
-
-  return [
-    `🚨 <b>ДТЕК Аварійне</b> ⚡ ${CITY}, ${STREET} ${HOUSE}`,
-    `🔴 <b>${beginTime}</b> Підтверджено аварійне відключення`,
-    `📋 ${reason}`,
-    `🕐 Орієнтовний час відновлення: <b>${endTime}</b>`,
+  const outageText = [
+    `🪫 <code>${begin} — ${end}</code>`,
+    "",
+    `⚠️ <i>${reason}.</i>`,
   ].join("\n")
+
+  const text = [
+    "⚡️ <b>Зафіксовано відключення:</b>",
+    outageText,
+    "",
+    `📢 <i>${update}</i>`,
+    `🤖 <i>${getCurrentTime()}</i>`,
+  ].join("\n")
+
+  return { text, outageText }
 }
-async function sendNotification(message) {
-  if (!TELEGRAM_BOT_TOKEN)
-    throw Error("❌ Missing telegram bot token or chat id.")
+
+async function sendNotification({ text, outageText }) {
+  if (!TELEGRAM_BOT_TOKEN) throw Error("❌ Missing telegram bot token.")
   if (!TELEGRAM_CHAT_ID) throw Error("❌ Missing telegram chat id.")
 
   console.log("🌀 Sending notification...")
 
   const lastMessage = loadLastMessage() || {}
+  const isOutageChanged = lastMessage.outageText !== outageText
+  const isEdit = Boolean(lastMessage.message_id) && !isOutageChanged
+  const isReply = Boolean(lastMessage.message_id) && isOutageChanged
+
   try {
     const response = await fetch(
       `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/${
-        lastMessage.message_id ? "editMessageText" : "sendMessage"
+        isEdit ? "editMessageText" : "sendMessage"
       }`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           chat_id: TELEGRAM_CHAT_ID,
-          text: message,
+          text,
           parse_mode: "HTML",
-          message_id: lastMessage.message_id ?? undefined,
+          disable_notification: checkIsNight(),
+          message_id: isEdit ? lastMessage.message_id : undefined,
+          reply_parameters: isReply
+            ? {
+                message_id: lastMessage.message_id,
+                allow_sending_without_reply: true,
+              }
+            : undefined,
         }),
       }
     )
 
     const data = await response.json()
-    saveLastMessage(data.result)
+
+    if (data.description?.includes("not modified")) {
+      console.log("🟡 Notification not changed.")
+      return
+    }
+    if (!data.ok) throw Error(data.description)
+
+    saveLastMessage({ ...data.result, outageText })
 
     console.log("🟢 Notification sent.")
+    return
   } catch (error) {
-    console.log("🔴 Notification not sent.", error.message)
+    console.error(`❌ Sending notification failed: ${error.message}.`)
     deleteLastMessage()
   }
+
+  if (sendNotificationRetries < RETRIES_MAX_COUNT) {
+    console.log("🌀 Try sending notification again...")
+    await new Promise((resolve) => setTimeout(resolve, RETRIES_TIMEOUT))
+    sendNotificationRetries++
+    return await sendNotification({ text, outageText })
+  }
+
+  throw Error(
+    `❌ Sending notification failed after ${RETRIES_MAX_COUNT} retries.`
+  )
 }
 
 async function run() {
@@ -171,4 +226,7 @@ async function run() {
   }
 }
 
-run().catch((error) => console.error(error.message))
+run().catch((error) => {
+  console.error(error.message)
+  process.exitCode = 1
+})

@@ -69,7 +69,7 @@ async function getInfo() {
       { REGION, CITY, STREET, csrfToken }
     )
 
-     if (!info?.data) {
+    if (!info?.data) {
       throw Error(`power outage info missed (${JSON.stringify(info)?.slice(0, 200)})`)
     }
 

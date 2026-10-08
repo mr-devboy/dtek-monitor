@@ -8,6 +8,7 @@ import {
   STREET,
   HOUSE,
   SHUTDOWNS_PAGE,
+  SHOULD_CHECK_ADDRESS,
   RETRIES_MAX_COUNT,
   RETRIES_TIMEOUT,
 } from "./constants.js"
@@ -34,6 +35,39 @@ async function getInfo() {
     await browserPage.goto(SHUTDOWNS_PAGE, {
       waitUntil: "load",
     })
+
+    const emergencyNotice = await browserPage
+      .locator(".m-attention__container.modal__container--firstPopup")
+      .evaluateAll((modals) =>
+        modals
+          .map((modal) => {
+            const title = modal.querySelector(".modal__title")?.textContent
+            const text = modal.querySelector(".m-attention__text")?.textContent
+            return [title, text]
+              .filter(Boolean)
+              .join("\n\n")
+              .replace(/[ \t]+/g, " ")
+              .replace(/\s*\n\s*/g, "\n")
+              .trim()
+          })
+          .find((notice) => {
+            const normalizedNotice = notice.toLocaleLowerCase("uk-UA")
+            return (
+              normalizedNotice.includes("екстрен") &&
+              normalizedNotice.includes("відключ")
+            )
+          })
+      )
+
+    if (emergencyNotice) {
+      console.log("🚨 Emergency power outage notice detected!")
+      return { emergencyNotice }
+    }
+
+    if (!SHOULD_CHECK_ADDRESS) {
+      console.log("✅ Emergency popup check finished.")
+      return { emergencyNotice }
+    }
 
     const csrfTokenTag = await browserPage.waitForSelector(
       'meta[name="csrf-token"]',
@@ -70,11 +104,13 @@ async function getInfo() {
     )
 
     if (!info?.data) {
-      throw Error(`power outage info missed (${JSON.stringify(info)?.slice(0, 200)})`)
+      throw Error(
+        `power outage info missed (${JSON.stringify(info)?.slice(0, 200)})`
+      )
     }
 
     console.log("✅ Getting info finished.")
-    return info
+    return { emergencyNotice, info }
   } catch (error) {
     console.error(`❌ Getting info failed: ${error.message}.`)
   } finally {
@@ -148,10 +184,34 @@ function generateMessage(info) {
     `🤖 <i>${getCurrentTime()}</i>`,
   ].join("\n")
 
-  return { text, outageText }
+  return { text, outageText, messageType: "outage" }
 }
 
-async function sendNotification({ text, outageText }) {
+function generateEmergencyMessage(emergencyNotice) {
+  console.log("🌀 Generating emergency outage message...")
+
+  const escapedNotice = emergencyNotice
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+
+  const outageText = `🚨 <b>Екстрені відключення електроенергії:</b>\n\n${escapedNotice}`
+  const text = [outageText, "", `🤖 <i>${getCurrentTime()}</i>`].join("\n")
+
+  return { text, outageText, messageType: "emergency" }
+}
+
+function generateEmergencyCancellationMessage() {
+  console.log("🌀 Generating emergency outage cancellation message...")
+
+  const outageText =
+    "✅ <b>Екстрені регіональні відключення електроенергії скасовано.</b>"
+  const text = [outageText, "", `🤖 <i>${getCurrentTime()}</i>`].join("\n")
+
+  return { text, outageText, messageType: "emergency-canceled" }
+}
+
+async function sendNotification({ text, outageText, messageType }) {
   if (!TELEGRAM_BOT_TOKEN) throw Error("❌ Missing telegram bot token.")
   if (!TELEGRAM_CHAT_ID) throw Error("❌ Missing telegram chat id.")
 
@@ -194,7 +254,7 @@ async function sendNotification({ text, outageText }) {
     }
     if (!data.ok) throw Error(data.description)
 
-    saveLastMessage({ ...data.result, outageText })
+    saveLastMessage({ ...data.result, outageText, messageType })
 
     console.log("🟢 Notification sent.")
     return
@@ -207,7 +267,7 @@ async function sendNotification({ text, outageText }) {
     console.log("🌀 Try sending notification again...")
     await new Promise((resolve) => setTimeout(resolve, RETRIES_TIMEOUT))
     sendNotificationRetries++
-    return await sendNotification({ text, outageText })
+    return await sendNotification({ text, outageText, messageType })
   }
 
   throw Error(
@@ -216,7 +276,29 @@ async function sendNotification({ text, outageText }) {
 }
 
 async function run() {
-  const info = await getInfo()
+  const { emergencyNotice, info } = await getInfo()
+
+  if (emergencyNotice) {
+    const message = generateEmergencyMessage(emergencyNotice)
+    await sendNotification(message)
+    return
+  }
+
+  const lastMessage = loadLastMessage()
+  const isEmergencyMessage =
+    lastMessage?.messageType === "emergency" ||
+    lastMessage?.outageText?.startsWith(
+      "🚨 <b>Екстрені відключення електроенергії:</b>"
+    )
+
+  if (isEmergencyMessage) {
+    const message = generateEmergencyCancellationMessage()
+    await sendNotification(message)
+    return
+  }
+
+  if (!info) return
+
   const isOutage = checkIsOutage(info)
 
   if (!isOutage) return

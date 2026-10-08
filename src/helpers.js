@@ -24,7 +24,13 @@ export function loadLastMessage() {
       timeZone: "Europe/Kyiv",
     })
 
-    if (messageDay < today) {
+    const isEmergencyMessage =
+      lastMessage.messageType === "emergency" ||
+      lastMessage.outageText?.startsWith(
+        "🚨 <b>Екстрені відключення електроенергії:</b>"
+      )
+
+    if (messageDay < today && !isEmergencyMessage) {
       deleteLastMessage()
       return null
     }
@@ -33,7 +39,12 @@ export function loadLastMessage() {
   return lastMessage
 }
 
-export function saveLastMessage({ date, message_id, outageText } = {}) {
+export function saveLastMessage({
+  date,
+  message_id,
+  outageText,
+  messageType,
+} = {}) {
   fs.mkdirSync(path.dirname(LAST_MESSAGE_FILE), { recursive: true })
   fs.writeFileSync(
     LAST_MESSAGE_FILE,
@@ -41,6 +52,7 @@ export function saveLastMessage({ date, message_id, outageText } = {}) {
       message_id,
       date,
       outageText,
+      messageType,
     })
   )
 }

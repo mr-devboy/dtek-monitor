@@ -7,6 +7,7 @@ export const {
   CITY,
   STREET,
   HOUSE,
+  CHECK_ADDRESS,
 } = process.env
 
 export const shutdownsPages = {
@@ -21,6 +22,7 @@ export const SHUTDOWNS_PAGE =
   shutdownsPages[String(REGION).toLocaleLowerCase()] ?? shutdownsPages["kr"]
 
 export const LAST_MESSAGE_FILE = path.resolve("artifacts", `last-message.json`)
+export const SHOULD_CHECK_ADDRESS = CHECK_ADDRESS !== "false"
 
 export const RETRIES_MAX_COUNT = 5
 export const RETRIES_TIMEOUT = 5000

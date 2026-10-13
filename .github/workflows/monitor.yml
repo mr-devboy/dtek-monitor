@@ -2,10 +2,10 @@ name: Run power outages monitor
 
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "*/15 * * * *"
   workflow_dispatch:
   repository_dispatch:
-    types: [check-dtek]
+    types: [check-dtek, check-emergency]
 
 concurrency:
   group: ${{ github.workflow }}
@@ -46,6 +46,27 @@ jobs:
           npm ci
           npx playwright install chromium
 
+      - name: Determine check type
+        id: check-type
+        run: |
+          if [ "${{ github.event.action }}" = "check-emergency" ]; then
+            echo "address=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "address=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          hour=$(date -u +%H)
+          minute=$(date -u +%M)
+          if [ "$minute" = "00" ] && ((10#$hour % 12 == 0)); then
+            echo "address=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "address=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Run monitoring script
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -54,6 +75,8 @@ jobs:
           CITY: ${{ secrets.CITY }}
           STREET: ${{ secrets.STREET }}
           HOUSE: ${{ secrets.HOUSE }}
+          CHECK_ADDRESS: ${{ steps.check-type.outputs.address }}
+          CHECK_GRID_STATUS: ${{ secrets.CHECK_GRID_STATUS }}
         run: node ./src/monitor.js
 
       - name: Commit updated artifacts

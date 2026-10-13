@@ -8,6 +8,32 @@ export function capitalize(str) {
   return str[0].toUpperCase() + str.slice(1).toLowerCase()
 }
 
+export function isEmergencyNotice(notice) {
+  return (
+    typeof notice === "string" &&
+    notice.length > 0 &&
+    !isStabilizationNotice(notice)
+  )
+}
+
+export function isStabilizationNotice(notice) {
+  return (
+    typeof notice === "string" &&
+    /діють\s+стабілізаційні\s+відключ/iu.test(notice)
+  )
+}
+
+export function isEmergencyMessage(message) {
+  return (
+    message?.messageType === "emergency" ||
+    Boolean(
+      message?.outageText?.startsWith(
+        "🚨 <b>Екстрені відключення електроенергії:</b>"
+      )
+    )
+  )
+}
+
 export function loadLastMessage() {
   if (!fs.existsSync(LAST_MESSAGE_FILE)) return null
 
@@ -24,7 +50,11 @@ export function loadLastMessage() {
       timeZone: "Europe/Kyiv",
     })
 
-    if (messageDay < today) {
+    if (
+      messageDay < today &&
+      !isEmergencyMessage(lastMessage) &&
+      lastMessage.messageType !== "emergency-canceled"
+    ) {
       deleteLastMessage()
       return null
     }
@@ -33,7 +63,12 @@ export function loadLastMessage() {
   return lastMessage
 }
 
-export function saveLastMessage({ date, message_id, outageText } = {}) {
+export function saveLastMessage({
+  date,
+  message_id,
+  outageText,
+  messageType,
+} = {}) {
   fs.mkdirSync(path.dirname(LAST_MESSAGE_FILE), { recursive: true })
   fs.writeFileSync(
     LAST_MESSAGE_FILE,
@@ -41,6 +76,7 @@ export function saveLastMessage({ date, message_id, outageText } = {}) {
       message_id,
       date,
       outageText,
+      messageType,
     })
   )
 }

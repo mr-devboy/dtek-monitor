@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.1](https://github.com/mr-devboy/dtek-monitor/compare/v2.1.0...v2.1.1) (2026-10-19)
+
+
+### Documentation
+
+* clarify that CITY and STREET must match DTEK form exactly ([a0a2408](https://github.com/mr-devboy/dtek-monitor/commit/a0a24086f899db8d715697516f7cfc1822dfbd65)), closes [#14](https://github.com/mr-devboy/dtek-monitor/issues/14)
+
 ## [2.1.0](https://github.com/mr-devboy/dtek-monitor/compare/v2.0.0...v2.1.0) (2026-10-05)
 
 

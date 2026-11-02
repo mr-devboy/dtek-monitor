@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.2](https://github.com/mr-devboy/dtek-monitor/compare/v2.1.1...v2.1.2) (2026-11-02)
+
+
+### Bug Fixes
+
+* keep last message on network errors to edit instead of sending new one ([1c45932](https://github.com/mr-devboy/dtek-monitor/commit/1c45932a07627bdb6deead1aad4eec5d2fc7e772))
+
 ## [2.1.1](https://github.com/mr-devboy/dtek-monitor/compare/v2.1.0...v2.1.1) (2026-10-19)
 
 

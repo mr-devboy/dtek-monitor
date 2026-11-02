@@ -198,7 +198,10 @@ async function sendNotification({ text, outageText }) {
     return
   } catch (error) {
     console.error(`❌ Sending notification failed: ${error.message}.`)
-    deleteLastMessage()
+
+    const isMessageLost =
+      /message to edit not found|message can't be edited/i.test(error.message)
+    if (isMessageLost) deleteLastMessage()
   }
 
   if (sendNotificationRetries < RETRIES_MAX_COUNT) {

@@ -24,10 +24,7 @@ export function loadLastMessage() {
       timeZone: "Europe/Kyiv",
     })
 
-    if (messageDay < today) {
-      deleteLastMessage()
-      return null
-    }
+    if (messageDay < today) return { outageText: lastMessage.outageText }
   }
 
   return lastMessage

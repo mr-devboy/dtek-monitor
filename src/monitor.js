@@ -125,12 +125,8 @@ function checkIsScheduled(info) {
   return isScheduled
 }
 
-function generateMessage(info) {
-  console.log("🌀 Generating message...")
-
+function generateOutageText(info) {
   const { sub_type, start_date, end_date } = info?.data?.[HOUSE] || {}
-  const { updateTimestamp } = info || {}
-  const update = updateTimestamp?.split(" ").reverse().join(" ")
 
   const reason = capitalize(sub_type)
   const begin = start_date.split(" ")[0]
@@ -142,13 +138,29 @@ function generateMessage(info) {
     `⚠️ <i>${reason}.</i>`,
   ].join("\n")
 
+  return outageText
+}
+
+function generateMessage(info, isOutage) {
+  console.log("🌀 Generating message...")
+
+  const { updateTimestamp } = info || {}
+  const update = updateTimestamp?.split(" ").reverse().join(" ")
+
+  const title = isOutage
+    ? "⚡️ <b>Зафіксовано позапланове відключення:</b>"
+    : "⚡️ <b>Позапланове відключення завершено</b>"
+  const outageText = isOutage ? generateOutageText(info) : undefined
+
   const text = [
-    "⚡️ <b>Зафіксовано позапланове відключення:</b>",
+    title,
     outageText,
     "",
     `📢 <i>${update}</i>`,
     `🤖 <i>${getCurrentTime()}</i>`,
-  ].join("\n")
+  ]
+    .filter((line) => line !== undefined)
+    .join("\n")
 
   return { text, outageText }
 }
@@ -251,8 +263,8 @@ async function run() {
 
   await updateChatTitle(isOutage)
 
-  if (isOutage) {
-    const message = generateMessage(info)
+  if (isOutage || loadLastMessage()?.outageText) {
+    const message = generateMessage(info, isOutage)
     await sendNotification(message)
   }
 }

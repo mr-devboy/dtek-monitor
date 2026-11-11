@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.0.0](https://github.com/mr-devboy/dtek-monitor/compare/v2.1.2...v3.0.0) (2026-11-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* the bot sends a message when an unscheduled outage disappears from the DTEK site and keeps the last outage in the saved state across days. The first run after the update may report the end of an outage that finished earlier if artifacts/last-message.json still holds it.
+
+### Features
+
+* mark outage as unscheduled in the message title ([6bea089](https://github.com/mr-devboy/dtek-monitor/commit/6bea0897cd21c6a0dd5ea5c9b16a6ea437166cff))
+* notify when unscheduled outage ends ([1de32a1](https://github.com/mr-devboy/dtek-monitor/commit/1de32a1105342a7950e13e8e94c5b5846ec23e14))
+* show unscheduled outage in chat title ([6af5f55](https://github.com/mr-devboy/dtek-monitor/commit/6af5f55e3ca182bf0f8edad4033ad93af4eb4af5))
+
 ## [2.1.2](https://github.com/mr-devboy/dtek-monitor/compare/v2.1.1...v2.1.2) (2026-11-02)
 
 

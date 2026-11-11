@@ -139,7 +139,7 @@ function generateMessage(info) {
   ].join("\n")
 
   const text = [
-    "⚡️ <b>Зафіксовано відключення:</b>",
+    "⚡️ <b>Зафіксовано позапланове відключення:</b>",
     outageText,
     "",
     `📢 <i>${update}</i>`,

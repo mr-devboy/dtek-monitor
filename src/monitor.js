@@ -1,8 +1,12 @@
 import { chromium } from "playwright"
 
 import {
+  TELEGRAM_API,
   TELEGRAM_BOT_TOKEN,
   TELEGRAM_CHAT_ID,
+  TELEGRAM_UPDATE_CHAT_TITLE,
+  OUTAGE_ICON,
+  TITLE_TEXT_START,
   REGION,
   CITY,
   STREET,
@@ -149,6 +153,33 @@ function generateMessage(info) {
   return { text, outageText }
 }
 
+async function updateChatTitle(isOutage) {
+  if (!TELEGRAM_UPDATE_CHAT_TITLE) return
+
+  try {
+    const chat = await fetch(
+      `${TELEGRAM_API}/getChat?chat_id=${TELEGRAM_CHAT_ID}`
+    )
+    const { result } = await chat.json()
+    if (!result?.title) return
+
+    const title = result.title.replace(`${OUTAGE_ICON} `, "")
+    const newTitle = isOutage
+      ? title.replace(TITLE_TEXT_START, `${OUTAGE_ICON} `)
+      : title
+
+    if (newTitle === result.title) return
+
+    await fetch(`${TELEGRAM_API}/setChatTitle`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, title: newTitle }),
+    })
+  } catch (error) {
+    console.error(`❌ Updating chat title failed: ${error.message}.`)
+  }
+}
+
 async function sendNotification({ text, outageText }) {
   if (!TELEGRAM_BOT_TOKEN) throw Error("❌ Missing telegram bot token.")
   if (!TELEGRAM_CHAT_ID) throw Error("❌ Missing telegram chat id.")
@@ -162,9 +193,7 @@ async function sendNotification({ text, outageText }) {
 
   try {
     const response = await fetch(
-      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/${
-        isEdit ? "editMessageText" : "sendMessage"
-      }`,
+      `${TELEGRAM_API}/${isEdit ? "editMessageText" : "sendMessage"}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -218,12 +247,11 @@ async function sendNotification({ text, outageText }) {
 
 async function run() {
   const info = await getInfo()
-  const isOutage = checkIsOutage(info)
+  const isOutage = checkIsOutage(info) && !checkIsScheduled(info)
 
-  if (!isOutage) return
+  await updateChatTitle(isOutage)
 
-  const isScheduled = checkIsScheduled(info)
-  if (isOutage && !isScheduled) {
+  if (isOutage) {
     const message = generateMessage(info)
     await sendNotification(message)
   }

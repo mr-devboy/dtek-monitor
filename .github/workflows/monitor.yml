@@ -54,6 +54,7 @@ jobs:
           CITY: ${{ secrets.CITY }}
           STREET: ${{ secrets.STREET }}
           HOUSE: ${{ secrets.HOUSE }}
+          TELEGRAM_UPDATE_CHAT_TITLE: ${{ vars.TELEGRAM_UPDATE_CHAT_TITLE }}
         run: node ./src/monitor.js
 
       - name: Commit updated artifacts

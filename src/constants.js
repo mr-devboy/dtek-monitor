@@ -9,6 +9,13 @@ export const {
   HOUSE,
 } = process.env
 
+export const TELEGRAM_API = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`
+export const TELEGRAM_UPDATE_CHAT_TITLE =
+  process.env.TELEGRAM_UPDATE_CHAT_TITLE !== "false"
+
+export const OUTAGE_ICON = "⚠️"
+export const TITLE_TEXT_START = /(?=[\p{L}\p{N}])/u
+
 export const shutdownsPages = {
   k: "https://www.dtek-kem.com.ua/ua/shutdowns",
   kr: "https://www.dtek-krem.com.ua/ua/shutdowns",

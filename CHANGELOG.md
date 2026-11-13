@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.1.1](https://github.com/mr-devboy/dtek-monitor/compare/v3.1.0...v3.1.1) (2026-11-13)
+
+
+### Continuous Integration
+
+* cache Playwright browsers ([b230895](https://github.com/mr-devboy/dtek-monitor/commit/b2308959febcd58a84fedb9d39581be7a74cc40a))
+
 ## [3.1.0](https://github.com/mr-devboy/dtek-monitor/compare/v3.0.0...v3.1.0) (2026-11-13)
 
 

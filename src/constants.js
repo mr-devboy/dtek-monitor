@@ -7,7 +7,10 @@ export const {
   CITY,
   STREET,
   HOUSE,
+  TARGET,
 } = process.env
+
+export const ADDRESS = [CITY, STREET, HOUSE].filter(Boolean).join(", ")
 
 export const TELEGRAM_API = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`
 export const TELEGRAM_UPDATE_CHAT_TITLE =
@@ -27,7 +30,11 @@ export const shutdownsPages = {
 export const SHUTDOWNS_PAGE =
   shutdownsPages[String(REGION).toLocaleLowerCase()] ?? shutdownsPages["kr"]
 
-export const LAST_MESSAGE_FILE = path.resolve("artifacts", `last-message.json`)
+export const LAST_MESSAGE_FILE = path.resolve(
+  "artifacts",
+  TARGET ?? "",
+  "last-message.json"
+)
 
 export const RETRIES_MAX_COUNT = 5
 export const RETRIES_TIMEOUT = 5000

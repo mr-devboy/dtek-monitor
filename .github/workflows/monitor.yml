@@ -17,8 +17,15 @@ permissions:
 
 jobs:
   monitor:
+    name: monitor${{ matrix.target && format(' ({0})', matrix.target) || '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        target: ${{ fromJSON(vars.TARGETS || '[""]') }}
+    environment: ${{ matrix.target || null }}
 
     steps:
       - name: Checkout code
@@ -48,6 +55,7 @@ jobs:
 
       - name: Run monitoring script
         env:
+          TARGET: ${{ matrix.target }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           REGION: ${{ secrets.REGION }}

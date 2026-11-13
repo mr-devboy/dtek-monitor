@@ -11,6 +11,8 @@ import {
   CITY,
   STREET,
   HOUSE,
+  TARGET,
+  ADDRESS,
   SHUTDOWNS_PAGE,
   RETRIES_MAX_COUNT,
   RETRIES_TIMEOUT,
@@ -154,6 +156,7 @@ function generateMessage(info, isOutage) {
 
   const text = [
     title,
+    TARGET ? `📍 ${ADDRESS}` : undefined,
     outageText,
     "",
     `📢 <i>${update}</i>`,
@@ -166,7 +169,7 @@ function generateMessage(info, isOutage) {
 }
 
 async function updateChatTitle(isOutage) {
-  if (!TELEGRAM_UPDATE_CHAT_TITLE) return
+  if (!TELEGRAM_UPDATE_CHAT_TITLE || TARGET) return
 
   try {
     const chat = await fetch(

@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.1.0](https://github.com/mr-devboy/dtek-monitor/compare/v3.0.0...v3.1.0) (2026-11-13)
+
+
+### Features
+
+* support multiple addresses via TARGETS variable ([6fe1ec1](https://github.com/mr-devboy/dtek-monitor/commit/6fe1ec14ee231c5f1e00696bca0b20c2b54fa84c))
+
 ## [3.0.0](https://github.com/mr-devboy/dtek-monitor/compare/v2.1.2...v3.0.0) (2026-11-11)
 
 

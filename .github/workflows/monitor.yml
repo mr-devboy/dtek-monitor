@@ -48,6 +48,12 @@ jobs:
           node-version-file: ".nvmrc"
           cache: npm
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
       - name: Install dependencies
         run: |
           npm ci

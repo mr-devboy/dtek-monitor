@@ -9,7 +9,7 @@
     "watch": "node --env-file=.env --watch ./src/monitor.js"
   },
   "dependencies": {
-    "playwright": "^1.55.0"
+    "playwright": "^1.65.1"
   },
   "engines": {
     "node": ">=22.15.1"

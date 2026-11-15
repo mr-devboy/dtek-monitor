@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.1.2](https://github.com/mr-devboy/dtek-monitor/compare/v3.1.1...v3.1.2) (2026-11-15)
+
+
+### Bug Fixes
+
+* bump playwright for ubuntu 26.04 runner support ([9da41f0](https://github.com/mr-devboy/dtek-monitor/commit/9da41f029e2be6ff61f37262d92d4fe69f92e83c))
+
 ## [3.1.1](https://github.com/mr-devboy/dtek-monitor/compare/v3.1.0...v3.1.1) (2026-11-13)
 
 

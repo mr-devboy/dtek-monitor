@@ -25,7 +25,9 @@ jobs:
       max-parallel: 1
       matrix:
         target: ${{ fromJSON(vars.TARGETS || '[""]') }}
-    environment: ${{ matrix.target || null }}
+    environment:
+      name: ${{ matrix.target }}
+      deployment: false
 
     steps:
       - name: Checkout code

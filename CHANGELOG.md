@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.1.3](https://github.com/mr-devboy/dtek-monitor/compare/v3.1.2...v3.1.3) (2026-11-24)
+
+
+### Continuous Integration
+
+* stop creating deployments on monitor runs ([a7d17cb](https://github.com/mr-devboy/dtek-monitor/commit/a7d17cb81e660266656983916d27e3f917b4fed8))
+
 ## [3.1.2](https://github.com/mr-devboy/dtek-monitor/compare/v3.1.1...v3.1.2) (2026-11-15)
 
 
